@@ -37,28 +37,33 @@ class TelaPrincipal extends StatelessWidget {
           appBar: AppBar(
             backgroundColor: const Color(0xFF011689),
             elevation: 0,
-            leading: Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Image.asset('assets/images/logo.jpeg'),
+            title: Image.asset(
+              'assets/images/logo_principal.jpeg',
+              height: 40,
+              fit: BoxFit.contain,
             ),
-            title: const Text(
-              'METRÔ DE SÃO PAULO',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
+            centerTitle: true,
             actions: [
               Padding(
-                padding: const EdgeInsets.all(10),
+                padding: const EdgeInsets.only(right: 10),
                 child: Row(
+                  mainAxisSize: MainAxisSize
+                      .min, // Impede que ocupe mais espaço do que necessário
                   children: [
-                    const Icon(Icons.account_circle, color: Colors.white),
-                    const SizedBox(width: 5),
-                    Text(
-                      'Olá, $nomeUsuario',
-                      style: const TextStyle(color: Colors.white),
+                    const Icon(Icons.account_circle,
+                        color: Colors.white, size: 28),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        'Olá, $nomeUsuario',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        overflow: TextOverflow
+                            .ellipsis, // Corta texto longo com "..."
+                      ),
                     ),
                   ],
                 ),
@@ -66,7 +71,8 @@ class TelaPrincipal extends StatelessWidget {
             ],
           ),
           body: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 20.0),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 16.0, vertical: 20.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
@@ -205,7 +211,8 @@ class TelaPrincipal extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('• ', style: TextStyle(fontSize: 18, color: Color(0xFF011689))),
+        const Text('• ',
+            style: TextStyle(fontSize: 18, color: Color(0xFF011689))),
         Expanded(
           child: Text(
             text,

@@ -142,24 +142,23 @@ class _TelaConsultaExtintorState extends State<TelaConsultaExtintor> {
   }
 
   @override
-  Widget build(BuildContext context) {
+   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
       appBar: AppBar(
-        title: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.fire_extinguisher, color: Colors.white),
-            const SizedBox(width: 8),
-            const Text(
-              'Consulta de Extintor',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-          ],
+        title: const Text(
+          'Consulta de Extintor',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Color(0xFFD9D9D9), // Cor do texto
+          ),
         ),
         backgroundColor: const Color(0xFF011689),
         centerTitle: true,
         elevation: 4,
+        iconTheme: const IconThemeData(
+          color: Color(0xFFD9D9D9), // Cor da seta de voltar
+        ),
       ),
       body: SingleChildScrollView(
         child: Padding(

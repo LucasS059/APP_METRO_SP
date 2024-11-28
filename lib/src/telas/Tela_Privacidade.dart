@@ -10,10 +10,13 @@ class TelaPrivacidade extends StatelessWidget {
         title: const Text(
           'Privacidade',
           style: TextStyle(
+            fontWeight : FontWeight.bold,
             color: Color(0xFFD9D9D9), // Cor do título
           ),
         ),
-        backgroundColor: const Color(0xFF004AAD),
+        backgroundColor: const Color(0xFF011689),
+        centerTitle: true,
+        elevation: 4,
         iconTheme:
             const IconThemeData(color: Color(0xFFD9D9D9)), // Cor do ícone
       ),

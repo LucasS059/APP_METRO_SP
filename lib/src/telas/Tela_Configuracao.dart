@@ -1,7 +1,6 @@
 import 'package:mobilegestaoextintores/src/telas/Tela_Erro.dart';
 import 'package:mobilegestaoextintores/src/telas/Tela_Login.dart';
 import 'package:flutter/material.dart';
-import 'package:mobilegestaoextintores/src/telas/Tela_ModoNoturno.dart';
 import 'package:mobilegestaoextintores/src/telas/Tela_Privacidade.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'tela_conta.dart'; 
@@ -12,10 +11,21 @@ class TelaConfiguracao extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white, 
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('Configuração'),
-        backgroundColor: const Color(0xFF004AAD),
+        title: const Text(
+          'Configuração',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Color(0xFFD9D9D9), // Cor do texto
+          ),
+        ),
+        backgroundColor: const Color(0xFF011689),
+        centerTitle: true,
+        elevation: 4,
+        iconTheme: const IconThemeData(
+          color: Color(0xFFD9D9D9), // Cor da seta de voltar
+        ),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -41,15 +51,6 @@ class TelaConfiguracao extends StatelessWidget {
             ),
             _buildConfigOption(
               context,
-              icon: Icons.phone_android,
-              label: 'Tela',
-              onTap: () {
-                Navigator.push(context,
-                    MaterialPageRoute(builder: (context) => TelaModoNoturno()));
-              },
-            ),
-            _buildConfigOption(
-              context,
               icon: Icons.bug_report,
               label: 'Reportar Erro',
               onTap: () {
@@ -71,11 +72,11 @@ class TelaConfiguracao extends StatelessWidget {
             ),
             const Spacer(),
             Opacity(
-              opacity: 0.2, 
+              opacity: 0.2,
               child: Center(
                 child: Container(
-                  width: MediaQuery.of(context).size.width * 0.5, 
-                  height: MediaQuery.of(context).size.height * 0.1, 
+                  width: MediaQuery.of(context).size.width * 0.5,
+                  height: MediaQuery.of(context).size.height * 0.1,
                   child: Image.asset(
                     'assets/images/logo.jpeg',
                     fit: BoxFit.contain,

@@ -31,8 +31,10 @@ class _TelaReportarErroState extends State<TelaReportarErro> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Reportar Erro', style: TextStyle(color: Color(0xFFD9D9D9))),
-        backgroundColor: const Color(0xFF004AAD),
+        title: const Text('Reportar Erro', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFD9D9D9))),
+        backgroundColor: const Color(0xFF011689),
+        centerTitle: true,
+        elevation: 4,
         iconTheme: const IconThemeData(color: Color(0xFFD9D9D9)), // Cor da seta (ícone de voltar)
       ),
       body: Padding(
@@ -50,8 +52,10 @@ class _TelaReportarErroState extends State<TelaReportarErro> {
                   borderRadius: BorderRadius.circular(8.0),
                 ),
                 child: const Text(
-                  'Caso tenha identificado algum erro, reporte abaixo:',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  'Caso tenha identificado algum erro, favor reportar abaixo',
+                  style: TextStyle(
+                    fontSize: 18, // Tamanho do texto
+                  ),
                   textAlign: TextAlign.center, // Centraliza o texto no contêiner
                 ),
               ),
@@ -83,11 +87,11 @@ class _TelaReportarErroState extends State<TelaReportarErro> {
                 onPressed: _enviarErro,
                 child: const Text(
                   'Enviar Erro',
-                  style: TextStyle(color: Color(0xFFD9D9D9)), // Cor do texto do botão
+                  style: TextStyle(color: Color(0xFFD9D9D9), fontSize: 20), // Cor do texto do botão
                 ),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF004AAD), // Cor de fundo do botão
-                  padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 40),
+                  backgroundColor: const Color(0xFF011689), // Cor de fundo do botão
+                  padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 40), // Aumentando o tamanho do botão
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
@@ -110,8 +114,6 @@ class _TelaReportarErroState extends State<TelaReportarErro> {
                 ),
               ),
             ),
-
-
           ],
         ),
       ),
