@@ -53,7 +53,7 @@ app.post('/registrar_extintor', async (req, res) => {
     const {
         patrimonio,
         tipo_id,
-        capacidade,
+        capacidade_id ,
         codigo_fabricante,
         data_fabricacao,
         data_validade,
@@ -78,11 +78,11 @@ app.post('/registrar_extintor', async (req, res) => {
         // Inserir no banco de dados
         const query = `
             INSERT INTO Extintores 
-            (Patrimonio, Tipo_ID, Capacidade, Codigo_Fabricante, Data_Fabricacao, Data_Validade, Ultima_Recarga, Proxima_Inspecao, status_id, Linha_ID, ID_Localizacao, QR_Code, Observacoes) 
+            (Patrimonio, Tipo_ID, capacidade_id , Codigo_Fabricante, Data_Fabricacao, Data_Validade, Ultima_Recarga, Proxima_Inspecao, status_id, Linha_ID, ID_Localizacao, QR_Code, Observacoes) 
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
         db.query(query, [
-            patrimonio, tipo_id, capacidade, codigo_fabricante, dataFabricacao, dataValidade, ultimaRecarga, proximaInspecao, status, linha_id, id_localizacao, qrCodePath, observacoes,
+            patrimonio, tipo_id, capacidade_id , codigo_fabricante, dataFabricacao, dataValidade, ultimaRecarga, proximaInspecao, status, linha_id, id_localizacao, qrCodePath, observacoes,
         ], (err) => {
             if (err) {
                 console.error('Erro ao inserir no banco de dados:', err);
@@ -227,11 +227,11 @@ app.get('/extintores', (req, res) => {
             return res.status(500).json({ success: false, message: 'Erro ao buscar extintores' });
         }
 
-        console.log('Resultados encontrados:', results); // Adicione esse log para verificar o retorno
-
+        console.log('Resultados encontrados:', results); // Verifique se está retornando a capacidade
         res.status(200).json({ success: true, extintores: results });
     });
 });
+
 
 app.post('/salvar_manutencao', (req, res) => {
     const {
@@ -342,6 +342,19 @@ app.post('/salvar_manutencao', (req, res) => {
                 res.status(200).json({ success: true, message: 'Manutenção salva e dados atualizados com sucesso!' });
             }
         });
+    });
+});
+
+app.get('/capacidades', (req, res) => {
+    const query = 'SELECT id, descricao FROM capacidades';  // Alterando para pegar tanto o 'id' quanto a 'descricao'
+    db.query(query, (err, results) => {
+        if (err) {
+            console.error('Erro ao consultar capacidades:', err);
+            return res.status(500).json({ success: false, message: 'Erro ao buscar capacidades' });
+        }
+
+        // Enviando os dados como esperado pelo frontend
+        res.json({ success: true, data: results });
     });
 });
 

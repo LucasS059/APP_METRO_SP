@@ -6,7 +6,6 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw; // Add this line
 import 'package:printing/printing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:flutter/services.dart'; // Para usar o método rootBundle para carregar arquivos de forma assíncrona
 
 class TelaRegistrarExtintor extends StatefulWidget {
   const TelaRegistrarExtintor({super.key});
@@ -16,9 +15,7 @@ class TelaRegistrarExtintor extends StatefulWidget {
 }
 
 class _TelaRegistrarExtintorState extends State<TelaRegistrarExtintor> {
-  // Controladores
   final _patrimonioController = TextEditingController();
-  final _capacidadeController = TextEditingController();
   final _codigoFabricanteController = TextEditingController();
   final _dataFabricacaoController = TextEditingController();
   final _dataValidadeController = TextEditingController();
@@ -31,11 +28,13 @@ class _TelaRegistrarExtintorState extends State<TelaRegistrarExtintor> {
   String? _localizacaoSelecionada;
   String? _statusSelecionado;
   String? _qrCodeUrl;
+  String? _capacidadeSelecionada;
 
   List<Map<String, dynamic>> tipos = [];
   List<Map<String, dynamic>> linhas = [];
   List<Map<String, dynamic>> localizacoesFiltradas = [];
   List<Map<String, dynamic>> status = [];
+  List<Map<String, dynamic>> capacidades = [];
 
   @override
   void initState() {
@@ -44,30 +43,95 @@ class _TelaRegistrarExtintorState extends State<TelaRegistrarExtintor> {
   }
 
   Future<void> _fetchInitialData() async {
-    setState(() {
-    });
-    await Future.wait([fetchTipos(), fetchLinhas(), fetchStatus()]);
-    setState(() {
-    });
+    setState(() {});
+    await Future.wait(
+        [fetchTipos(), fetchLinhas(), fetchStatus(), fetchCapacidades()]);
+    setState(() {});
+  }
+
+  Future<void> fetchCapacidades() async {
+    final response =
+        await http.get(Uri.parse('http://10.0.2.2:3001/capacidades'));
+    if (response.statusCode == 200) {
+      try {
+        var data = json.decode(response.body);
+        if (data['data'] != null) {
+          setState(() {
+            capacidades = List<Map<String, dynamic>>.from(data['data'] ?? []);
+          });
+          print('Capacidades carregadas: $capacidades'); // Verifique a resposta
+        } else {
+          _showErrorDialog('Capacidades não encontradas.');
+        }
+      } catch (e) {
+        _showErrorDialog('Erro ao decodificar a resposta: $e');
+      }
+    } else {
+      _showErrorDialog('Erro ao carregar capacidades: ${response.statusCode}');
+    }
+  }
+
+  Widget _buildDropdown({
+    required String label,
+    required List<Map<String, dynamic>> items,
+    String? value,
+    required Function(String?) onChanged,
+    String Function(Map<String, dynamic>)? displayItem,
+  }) {
+    return DropdownButtonFormField(
+      isExpanded: true,
+      value: value,
+      items: items
+          .map((item) => DropdownMenuItem(
+                value: item['id'].toString(),
+                child: Text(
+                  displayItem != null
+                      ? displayItem(item)
+                      : (item['descricao'] ?? 'Descrição não disponível'),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ))
+          .toList(),
+      onChanged: onChanged,
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(color: Colors.black),
+        filled: true,
+        fillColor: const Color(0xFFF4F4F9),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide.none,
+        ),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      ),
+    );
   }
 
   Future<void> fetchTipos() async {
     final prefs = await SharedPreferences.getInstance();
     String? cachedTipos = prefs.getString('tipos');
+
     if (cachedTipos != null) {
       setState(() {
         tipos =
             List<Map<String, dynamic>>.from(json.decode(cachedTipos)['data']);
       });
+      print('Tipos carregados do cache: $tipos');
     } else {
       final response =
           await http.get(Uri.parse('http://10.0.2.2:3001/tipos-extintores'));
+
       if (response.statusCode == 200) {
+        print(
+            'Tipos retornados da API: ${response.body}'); // Verifique a resposta
         prefs.setString('tipos', response.body);
         setState(() {
           tipos = List<Map<String, dynamic>>.from(
               json.decode(response.body)['data']);
         });
+      } else {
+        print('Erro ao carregar tipos: ${response.statusCode}');
       }
     }
   }
@@ -120,18 +184,23 @@ class _TelaRegistrarExtintorState extends State<TelaRegistrarExtintor> {
   Future<void> _registrarExtintor() async {
     if (_patrimonioController.text.isEmpty ||
         _tipoSelecionado == null ||
-        _capacidadeController.text.isEmpty ||
+        _tipoSelecionado!.isEmpty ||
+        _capacidadeSelecionada == null ||
+        _capacidadeSelecionada!.isEmpty ||
         _linhaSelecionada == null ||
+        _linhaSelecionada!.isEmpty ||
         _localizacaoSelecionada == null ||
-        _statusSelecionado == null) {
-      _showErrorDialog('Preencha todos os campos obrigatórios.');
+        _localizacaoSelecionada!.isEmpty ||
+        _statusSelecionado == null ||
+        _statusSelecionado!.isEmpty) {
+      _showErrorDialog('Por favor, preencha todos os campos obrigatórios.');
       return;
     }
 
     final extintorData = {
       "patrimonio": _patrimonioController.text,
       "tipo_id": _tipoSelecionado,
-      "capacidade": _capacidadeController.text,
+      "capacidade_id": _capacidadeSelecionada, // Envia diretamente o valor
       "codigo_fabricante": _codigoFabricanteController.text,
       "data_fabricacao": _dataFabricacaoController.text,
       "data_validade": _dataValidadeController.text,
@@ -204,15 +273,6 @@ class _TelaRegistrarExtintorState extends State<TelaRegistrarExtintor> {
     );
   }
 
-  bool _isValidDate(String date) {
-    try {
-      DateFormat('dd/MM/yyyy').parse(date);
-      return true;
-    } catch (e) {
-      return false;
-    }
-  }
-
   Widget _buildTextField({
     required TextEditingController controller,
     required String label,
@@ -223,9 +283,9 @@ class _TelaRegistrarExtintorState extends State<TelaRegistrarExtintor> {
       readOnly: isDate,
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: const TextStyle(color: Colors.black), // Preto
+        labelStyle: const TextStyle(color: Colors.black),
         filled: true,
-        fillColor: const Color(0xFFF4F4F9), // Fundo claro
+        fillColor: const Color(0xFFF4F4F9),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
           borderSide: BorderSide.none,
@@ -241,18 +301,15 @@ class _TelaRegistrarExtintorState extends State<TelaRegistrarExtintor> {
     if (_qrCodeUrl == null) return;
 
     try {
-      final response =
-          await http.get(Uri.parse(_qrCodeUrl!)); // Baixando a imagem
+      final response = await http.get(Uri.parse(_qrCodeUrl!));
       if (response.statusCode == 200) {
-        final imageBytes =
-            response.bodyBytes; // A imagem é obtida como um Uint8List
+        final imageBytes = response.bodyBytes;
         final pdf = pw.Document();
 
         pdf.addPage(pw.Page(
           build: (pw.Context context) {
             return pw.Center(
-              child: pw.Image(pw.MemoryImage(
-                  imageBytes)), // Usando MemoryImage para carregar a imagem
+              child: pw.Image(pw.MemoryImage(imageBytes)),
             );
           },
         ));
@@ -268,49 +325,13 @@ class _TelaRegistrarExtintorState extends State<TelaRegistrarExtintor> {
     }
   }
 
-  Widget _buildDropdown({
-    required String label,
-    required List<Map<String, dynamic>> items,
-    String? value,
-    required Function(String?) onChanged,
-    String Function(Map<String, dynamic>)? displayItem,
-  }) {
-    return DropdownButtonFormField(
-      isExpanded:
-          true, // Garante que o dropdown ocupe toda a largura disponível
-      value: value,
-      items: items
-          .map((item) => DropdownMenuItem(
-                value: item['id'].toString(),
-                child: Text(
-                  displayItem != null ? displayItem(item) : item['nome'],
-                  overflow: TextOverflow.ellipsis, // Para truncar o texto longo
-                ),
-              ))
-          .toList(),
-      onChanged: onChanged,
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: const TextStyle(color: Colors.black), // Preto
-        filled: true,
-        fillColor: const Color(0xFFF4F4F9),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide.none,
-        ),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: const Color(0xFF011689),
         title: const Text('Registrar Extintor'),
-        foregroundColor: Colors.white, // Cor do texto do título
+        foregroundColor: Colors.white,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           color: Colors.white,
@@ -339,18 +360,40 @@ class _TelaRegistrarExtintorState extends State<TelaRegistrarExtintor> {
                     _buildDropdown(
                       label: 'Tipo',
                       items: tipos,
-                      value: _tipoSelecionado,
+                      value: _capacidadeSelecionada?.isNotEmpty ?? false
+                          ? _capacidadeSelecionada
+                          : null,
                       onChanged: (value) {
                         setState(() {
                           _tipoSelecionado = value;
                         });
                       },
+                      displayItem: (item) =>
+                          item['nome'] ??
+                          'Descrição não disponível', // Aqui foi ajustado para 'nome'
                     ),
-                    const SizedBox(height: 12),
-                    _buildTextField(
-                      controller: _capacidadeController,
-                      label: 'Capacidade (L)',
-                    ),
+                    _buildDropdown(
+  label: 'Capacidade',
+  items: capacidades.map((item) {
+    return DropdownMenuItem(
+      value: item['id'].toString(), // Converte os IDs para String
+      child: Text(
+        item['descricao'] ?? 'Descrição não disponível',
+        overflow: TextOverflow.ellipsis,
+      ),
+    );
+  }).toList(),
+  value: capacidades.any((item) => item['id'].toString() == _capacidadeSelecionada)
+      ? _capacidadeSelecionada
+      : null, // Garante que o valor seja válido
+  onChanged: (value) {
+    setState(() {
+      _capacidadeSelecionada = value;
+    });
+  },
+  displayItem: (item) => item['descricao'] ?? 'Descrição não disponível',
+),
+
                     const SizedBox(height: 12),
                     _buildTextField(
                       controller: _codigoFabricanteController,
@@ -381,22 +424,18 @@ class _TelaRegistrarExtintorState extends State<TelaRegistrarExtintor> {
                       isDate: true,
                     ),
                     const SizedBox(height: 12),
-                    SizedBox(
-                      child: _buildDropdown(
-                        label: 'Linha',
-                        items: linhas,
-                        value: _linhaSelecionada,
-                        onChanged: (value) {
-                          setState(() {
-                            _linhaSelecionada = value;
-                            _localizacaoSelecionada =
-                                null; // Limpar a seleção de localização
-                            fetchLocalizacoes(
-                                value!); // Atualiza as localizações
-                          });
-                        },
-                        displayItem: (item) => item['nome'],
-                      ),
+                    _buildDropdown(
+                      label: 'Linha',
+                      items: linhas,
+                      value: _linhaSelecionada,
+                      onChanged: (value) {
+                        setState(() {
+                          _linhaSelecionada = value;
+                          _localizacaoSelecionada = null;
+                          fetchLocalizacoes(value!);
+                        });
+                      },
+                      displayItem: (item) => item['nome'],
                     ),
                     const SizedBox(height: 12),
                     _buildDropdown(
@@ -405,11 +444,9 @@ class _TelaRegistrarExtintorState extends State<TelaRegistrarExtintor> {
                       value: _localizacaoSelecionada,
                       onChanged: (value) {
                         setState(() {
-                          // Verifique se a localização selecionada ainda está na lista de itens
                           if (!localizacoesFiltradas
                               .any((item) => item['id'].toString() == value)) {
-                            _localizacaoSelecionada =
-                                null; // Limpar valor se não encontrado
+                            _localizacaoSelecionada = null;
                           } else {
                             _localizacaoSelecionada = value;
                           }
@@ -419,18 +456,16 @@ class _TelaRegistrarExtintorState extends State<TelaRegistrarExtintor> {
                           '${item['subarea']} - ${item['local_detalhado']}',
                     ),
                     const SizedBox(height: 12),
-                    SizedBox(
-                      child: _buildDropdown(
-                        label: 'Status',
-                        items: status,
-                        value: _statusSelecionado,
-                        onChanged: (value) {
-                          setState(() {
-                            _statusSelecionado = value;
-                          });
-                        },
-                        displayItem: (item) => item['nome'],
-                      ),
+                    _buildDropdown(
+                      label: 'Status',
+                      items: status,
+                      value: _statusSelecionado,
+                      onChanged: (value) {
+                        setState(() {
+                          _statusSelecionado = value;
+                        });
+                      },
+                      displayItem: (item) => item['nome'],
                     ),
                     const SizedBox(height: 12),
                     _buildTextField(
@@ -441,7 +476,7 @@ class _TelaRegistrarExtintorState extends State<TelaRegistrarExtintor> {
                     ElevatedButton(
                       onPressed: _registrarExtintor,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF011689), // Azul
+                        backgroundColor: const Color(0xFF011689),
                         padding: const EdgeInsets.symmetric(
                             horizontal: 32, vertical: 12),
                         shape: RoundedRectangleBorder(
@@ -461,7 +496,7 @@ class _TelaRegistrarExtintorState extends State<TelaRegistrarExtintor> {
                           ElevatedButton(
                             onPressed: _printQRCode,
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF011689), // Azul
+                              backgroundColor: const Color(0xFF011689),
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 32, vertical: 12),
                               shape: RoundedRectangleBorder(

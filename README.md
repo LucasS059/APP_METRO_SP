@@ -45,7 +45,6 @@ CREATE TABLE localizacoes (
     PRIMARY KEY (ID_Localizacao),
     FOREIGN KEY (Linha_ID) REFERENCES linhas(id)
 );
-SELECT * FROM extintores;
 
 -- Tabela de extintores
 CREATE TABLE extintores (
