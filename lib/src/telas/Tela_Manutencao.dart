@@ -19,16 +19,33 @@ class _ManutencaoExtintorPageState extends State<ManutencaoExtintorPage> {
   int? idExtintor;
   bool revisarStatus = false;
 
-  List<Map<String, dynamic>> extintores = [];
+  List<Map<String, dynamic>> extintores = []; // Declare a lista extintores aqui
+  List<Map<String, dynamic>> statusOptions = [];
 
   @override
   void initState() {
     super.initState();
     _carregarExtintores();
+    _carregarStatus(); // Carregar status no initState
+  }
+
+  Future<void> _carregarStatus() async {
+    final url = Uri.parse('http://localhost:3001/status');
+    final response = await http.get(url);
+
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      if (data['success']) {
+        setState(() {
+          statusOptions = List<Map<String, dynamic>>.from(data['data']);
+        });
+      }
+    }
   }
 
   Future<void> _carregarExtintores() async {
-    final url = Uri.parse('http://localhost:3001/extintores');
+    final url = Uri.parse(
+        'http://localhost:3001/extintores-com-problemas'); // Novo endpoint
     final response = await http.get(url);
 
     if (response.statusCode == 200) {
@@ -99,9 +116,22 @@ class _ManutencaoExtintorPageState extends State<ManutencaoExtintorPage> {
         }));
 
     if (response.statusCode == 200) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text("Manutenção salva com sucesso!"),
-      ));
+      // Excluir o registro de problema após salvar a manutenção
+      final deleteUrl = Uri.parse('http://localhost:3001/excluir_problema');
+      final deleteResponse = await http.post(deleteUrl,
+          headers: {'Content-Type': 'application/json'},
+          body: json.encode({'patrimonio': idExtintor}));
+
+      // Verifique a resposta do deleteResponse
+      if (deleteResponse.statusCode == 200) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text("Manutenção salva e problema excluído com sucesso!"),
+        ));
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text("Erro ao excluir problema: ${deleteResponse.body}"),
+        ));
+      }
     }
   }
 
@@ -200,12 +230,26 @@ class _ManutencaoExtintorPageState extends State<ManutencaoExtintorPage> {
                   ),
                   const SizedBox(height: 16),
 
-                  SwitchListTile(
-                    title: const Text("Revisar Status do Extintor"),
-                    value: revisarStatus,
-                    onChanged: (bool value) {
+                  DropdownButtonFormField<String>(
+                    value: revisarStatus
+                        ? 'Ativo'
+                        : null, // Defina um valor padrão se necessário
+                    decoration: InputDecoration(
+                      border: OutlineInputBorder(),
+                      filled: true,
+                      fillColor: const Color(0xFFD9D9D9), // Cor do campo
+                    ),
+                    hint: const Text("Selecione o Status"),
+                    items: statusOptions.map((status) {
+                      return DropdownMenuItem<String>(
+                        value: status['nome'],
+                        child: Text(status['nome']),
+                      );
+                    }).toList(),
+                    onChanged: (String? value) {
                       setState(() {
-                        revisarStatus = value;
+                        revisarStatus = value ==
+                            'Ativo'; // Atualiza a variável revisarStatus
                       });
                     },
                   ),

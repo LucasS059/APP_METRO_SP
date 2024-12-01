@@ -503,6 +503,45 @@ app.get('/problemas', (req, res) => {
     });
 });
 
+app.get('/extintores-com-problemas', (req, res) => {
+    const query = `
+        SELECT DISTINCT e.Patrimonio, e.Tipo_ID 
+        FROM Extintores e
+        JOIN Problemas_Extintores p ON e.Patrimonio = p.ID_Extintor
+    `;
+
+    db.query(query, (err, results) => {
+        if (err) {
+            console.error('Erro ao buscar extintores com problemas:', err);
+            return res.status(500).json({ success: false, message: 'Erro ao buscar extintores com problemas' });
+        }
+
+        res.status(200).json({ success: true, extintores: results });
+    });
+});
+
+app.post('/excluir_problema', (req, res) => {
+    const { patrimonio } = req.body;
+
+    if (!patrimonio) {
+        return res.status(400).json({ success: false, message: 'Patrimônio é obrigatório' });
+    }
+
+    const query = `
+        DELETE FROM Problemas_Extintores 
+        WHERE ID_Extintor = ?
+    `;
+
+    db.query(query, [patrimonio], (err) => {
+        if (err) {
+            console.error('Erro ao excluir problema:', err);
+            return res.status(500).json({ success: false, message: 'Erro ao excluir problema' });
+        }
+
+        res.status(200).json({ success: true, message: 'Problema excluído com sucesso!' });
+    });
+});
+
 app.get('/tipos-extintores', (req, res) => {
     const query = 'SELECT id, tipo AS nome FROM Tipos_Extintores';
 
