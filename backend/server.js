@@ -694,6 +694,37 @@ app.put('/atualizar_status_extintor', (req, res) => {
     });
 });
 
+const nodemailer = require('nodemailer');
+
+// Configuração do transporte do Nodemailer
+const transporter = nodemailer.createTransport({
+    service: 'gmail', // ou outro serviço de e-mail
+    auth: {
+        user: 'seu-email@gmail.com', // seu e-mail
+        pass: 'sua-senha' // sua senha
+    }
+});
+
+// Endpoint para enviar e-mail
+app.post('/enviar-email', (req, res) => {
+    const { subject, body } = req.body;
+
+    const mailOptions = {
+        from: 'lucas.silva.b231@gmail.com', // seu e-mail
+        to: 'lucasbarboza299@gmail.com', // e-mail para onde você quer enviar
+        subject: subject,
+        text: body
+    };
+
+    transporter.sendMail(mailOptions, (error, info) => {
+        if (error) {
+            console.error('Erro ao enviar e-mail:', error);
+            return res.status(500).json({ success: false, message: 'Erro ao enviar e-mail' });
+        }
+        res.status(200).json({ success: true, message: 'E-mail enviado: ' + info.response });
+    });
+});
+
 const PORT = 3001;
 app.listen(PORT, '0.0.0.0', async () => {
     console.log(`Servidor rodando na porta ${PORT}`);
