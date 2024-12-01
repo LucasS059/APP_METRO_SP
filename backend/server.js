@@ -55,7 +55,7 @@ db.connect((err) => {
         return;
     }
     console.log('Conectado ao banco de dados MySQL');
-    // inserirUsuario('Lucas Silva', 'lucasbarboza@gmail.com', 'senha123', 'MT0001', 1); // Altere os parâmetros conforme necessário
+    // inserirUsuario('Lucas Silva', 'lucasbarboza299a@gmail.com', 'senha123', 'MT0002', 2); // Altere os parâmetros conforme necessário
 
 });
 
@@ -354,6 +354,12 @@ app.post('/registrar_problema', (req, res) => {
     });
 });
 
+// Certifique-se de que a pasta "image_perfil" exista
+const profileImagesDir = path.join(__dirname, 'image_perfil');
+if (!fs.existsSync(profileImagesDir)) {
+    fs.mkdirSync(profileImagesDir);
+}
+app.use('/image_perfil', express.static(profileImagesDir));
 app.post('/upload', async (req, res) => {
     const { usuario_id } = req.body; // ID do usuário
 
@@ -368,13 +374,26 @@ app.post('/upload', async (req, res) => {
     }
 
     try {
-        // Salvar a imagem no diretório 'uploads'
+        // Primeiro, busque a imagem anterior do usuário
+        const [usuarioResult] = await db.promise().query('SELECT foto_perfil FROM usuarios WHERE id = ?', [usuario_id]);
+        if (usuarioResult.length > 0) {
+            const fotoPerfilAnterior = usuarioResult[0].foto_perfil;
+            if (fotoPerfilAnterior) {
+                // Exclua a imagem anterior
+                const caminhoAnterior = path.join(__dirname, fotoPerfilAnterior);
+                if (fs.existsSync(caminhoAnterior)) {
+                    fs.unlinkSync(caminhoAnterior); // Exclui a imagem anterior
+                }
+            }
+        }
+
+        // Salvar a nova imagem no diretório 'image_perfil'
         const fileName = `${Date.now()}-${file.name}`;
-        const filePath = path.join(uploadsDir, fileName);
+        const filePath = path.join(profileImagesDir, fileName);
         await fs.promises.writeFile(filePath, file.data); // Salva o arquivo
 
-        // Atualizar o caminho da imagem no banco de dados
-        const relativePath = path.join('uploads', fileName); // Caminho relativo
+        // Atualizar o caminho da nova imagem no banco de dados
+        const relativePath = path.join('image_perfil', fileName); // Caminho relativo
         const query = 'UPDATE usuarios SET foto_perfil = ? WHERE id = ?';
         await db.promise().query(query, [relativePath, usuario_id]);
 
@@ -442,8 +461,11 @@ app.get('/usuario', (req, res) => {
         }
 
         const usuario = results[0];
-        // Construa a URL da imagem corretamente
-        const urlImagem = `${req.protocol}://${req.get('host')}/${usuario.foto_perfil}`;
+        // Corrigir a construção da URL da imagem
+        const urlImagem = usuario.foto_perfil 
+            ? `${req.protocol}://${req.get('host')}/${usuario.foto_perfil.replace(/\\/g, '/')}`
+            : null; // Se não houver foto, defina como null
+        
         res.json({ success: true, ...usuario, foto_perfil: urlImagem }); // Retorna a URL da imagem
     });
 });
