@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
-
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -14,7 +13,7 @@ class TelaConta extends StatefulWidget {
 }
 
 class _TelaContaState extends State<TelaConta> {
-  XFile? _imagemSelecionada; // Alterado de PickedFile para XFile
+  XFile? _imagemSelecionada; // Para armazenar a imagem selecionada
   String nome = 'Carregando...';
   String matricula = 'Carregando...';
   String cargo = 'Carregando...';
@@ -26,7 +25,7 @@ class _TelaContaState extends State<TelaConta> {
     _buscarUsuario();
   }
 
-Future<void> _buscarUsuario() async {
+  Future<void> _buscarUsuario() async {
     final prefs = await SharedPreferences.getInstance();
     final String? email = prefs.getString('usuario_email');
 
@@ -35,6 +34,7 @@ Future<void> _buscarUsuario() async {
         nome = 'Erro ao carregar';
         matricula = 'Erro ao carregar';
         cargo = 'Erro ao carregar';
+        _imagemSelecionada = null; // Adicionado
       });
       return;
     }
@@ -52,6 +52,13 @@ Future<void> _buscarUsuario() async {
           matricula = data['matricula'] ?? 'Matrícula não encontrada';
           cargo = data['cargo'] ?? 'Cargo não encontrado';
           usuarioId = data['id'] ?? 0; // Atribui 0 caso o id seja nulo
+          // Carregar a imagem do perfil
+          if (data['foto_perfil'] != null) {
+            _imagemSelecionada =
+                XFile(data['foto_perfil']); // Se for um caminho local
+          } else {
+            _imagemSelecionada = null; // Se não houver imagem, defina como nulo
+          }
         });
       } else {
         final errorMessage =
@@ -60,6 +67,7 @@ Future<void> _buscarUsuario() async {
           nome = 'Erro ao carregar: $errorMessage';
           matricula = 'Erro ao carregar: $errorMessage';
           cargo = 'Erro ao carregar: $errorMessage';
+          _imagemSelecionada = null; // Se houver erro, defina como nulo
         });
       }
     } catch (e) {
@@ -67,11 +75,11 @@ Future<void> _buscarUsuario() async {
         nome = 'Erro ao carregar';
         matricula = 'Erro ao carregar';
         cargo = 'Erro ao carregar';
+        _imagemSelecionada = null; // Se houver erro, defina como nulo
       });
       print('Erro ao buscar usuário: $e'); // Log para depuração
     }
   }
-
 
   // Método para selecionar e enviar a imagem
   Future<void> _uploadImagem(int usuarioId) async {
@@ -99,25 +107,23 @@ Future<void> _buscarUsuario() async {
 
       if (response.statusCode == 200) {
         print('Imagem salva com sucesso!');
-        // Pode adicionar feedback visual para o usuário
+        setState(() {
+          _imagemSelecionada = imagem; // Atualiza a imagem local
+        });
+        // Recarregar os dados do usuário para garantir que a imagem mais recente seja exibida
+        await _buscarUsuario();
       } else {
-        print('Falha ao salvar a imagem.');
+        print('Falha ao salvar a imagem. Status: ${response.statusCode}');
+        final responseBody = await response.stream
+            .bytesToString(); // Captura o corpo da resposta
+        print('Resposta do servidor: $responseBody'); // Log para depuração
       }
     }
   }
 
   // Método para trocar a foto de perfil
   Future<void> _trocarFotoPerfil() async {
-    final picker = ImagePicker();
-    final XFile? imagem = await picker.pickImage(source: ImageSource.gallery);
-
-    if (imagem != null) {
-      setState(() {
-        _imagemSelecionada = imagem;
-      });
-      // Você pode adicionar a lógica de upload, caso deseje
-      await _uploadImagem(usuarioId);
-    }
+    await _uploadImagem(usuarioId);
   }
 
   @override
@@ -125,12 +131,13 @@ Future<void> _buscarUsuario() async {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('Minha Conta', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFD9D9D9))),
+        title: const Text('Minha Conta',
+            style: TextStyle(
+                fontWeight: FontWeight.bold, color: Color(0xFFD9D9D9))),
         backgroundColor: const Color(0xFF011689),
         centerTitle: true,
         elevation: 4,
-        iconTheme:
-            const IconThemeData(color: Color(0xFFD9D9D9)),
+        iconTheme: const IconThemeData(color: Color(0xFFD9D9D9)),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -138,7 +145,7 @@ Future<void> _buscarUsuario() async {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             GestureDetector(
-              onTap: () => _uploadImagem(usuarioId), // Passando o usuarioId
+              onTap: _trocarFotoPerfil, // Chama o método para trocar a foto
               child: Stack(
                 alignment: Alignment.bottomRight,
                 children: [
@@ -149,15 +156,12 @@ Future<void> _buscarUsuario() async {
                       return ScaleTransition(scale: animation, child: child);
                     },
                     child: CircleAvatar(
-                      key: ValueKey<String>(
-                          _imagemSelecionada?.path ?? 'default'),
-                      radius: 60,
-                      backgroundImage: _imagemSelecionada != null
-                          ? FileImage(File(_imagemSelecionada!.path))
-                          : const AssetImage(
-                                  'assets/images/default_profile.png')
-                              as ImageProvider,
-                    ),
+    key: ValueKey<String>(_imagemSelecionada?.path ?? 'default'),
+    radius: 60,
+    backgroundImage: _imagemSelecionada != null
+        ? NetworkImage(_imagemSelecionada!.path) // Usar NetworkImage para URLs
+        : const AssetImage('assets/images/default_profile.png') as ImageProvider,
+),
                   ),
                   CircleAvatar(
                     backgroundColor: Colors.white,

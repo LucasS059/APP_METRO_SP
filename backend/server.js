@@ -6,8 +6,16 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const QRCode = require('qrcode');
 const path = require('path');
-const app = express();
 const moment = require('moment');
+const { check, validationResult } = require('express-validator');
+const bcrypt = require('bcrypt');
+const crypto = require('crypto');
+const nodemailer = require('nodemailer'); // Importação única
+const fileUpload = require('express-fileupload');
+
+const app = express();
+
+// Middleware para manipulação de arquivos
 
 // Configuração do banco de dados
 const db = mysql.createConnection({
@@ -17,12 +25,38 @@ const db = mysql.createConnection({
     database: 'metro_sp',
 });
 
+async function inserirUsuario(nome, email, senha, matricula, cargo_id) {
+    try {
+        // Criptografar a senha
+        const hashedPassword = await bcrypt.hash(senha, 10);
+
+        // Inserir o usuário na tabela
+        const query = `
+            INSERT INTO usuarios (nome, email, senha, matricula, cargo_id) 
+            VALUES (?, ?, ?, ?, ?)
+        `;
+        const params = [nome, email, hashedPassword, matricula, cargo_id];
+
+        db.query(query, params, (err, results) => {
+            if (err) {
+                console.error('Erro ao inserir usuário:', err);
+                return;
+            }
+            console.log('Usuário inserido com sucesso:', results.insertId);
+        });
+    } catch (error) {
+        console.error('Erro ao criptografar a senha:', error);
+    }
+}
+
 db.connect((err) => {
     if (err) {
         console.error('Erro ao conectar ao banco de dados:', err);
         return;
     }
     console.log('Conectado ao banco de dados MySQL');
+    // inserirUsuario('Lucas Silva', 'lucasbarboza@gmail.com', 'senha123', 'MT0001', 1); // Altere os parâmetros conforme necessário
+
 });
 
 // Middleware
@@ -31,7 +65,10 @@ app.use(cors({
     methods: 'GET, POST, PUT, DELETE',
     allowedHeaders: 'Content-Type, Authorization',
 }));
-app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true })); // Para dados de formulários
+app.use(bodyParser.json()); // Para JSON
+app.use(fileUpload());
+
 
 // Certifique-se de que a pasta "uploads" exista
 const uploadsDir = path.join(__dirname, 'uploads');
@@ -317,6 +354,37 @@ app.post('/registrar_problema', (req, res) => {
     });
 });
 
+app.post('/upload', async (req, res) => {
+    const { usuario_id } = req.body; // ID do usuário
+
+    if (!usuario_id) {
+        return res.status(400).json({ success: false, message: 'ID do usuário é obrigatório' });
+    }
+
+    const file = req.files.image; // A imagem enviada
+
+    if (!file) {
+        return res.status(400).json({ success: false, message: 'Imagem é obrigatória' });
+    }
+
+    try {
+        // Salvar a imagem no diretório 'uploads'
+        const fileName = `${Date.now()}-${file.name}`;
+        const filePath = path.join(uploadsDir, fileName);
+        await fs.promises.writeFile(filePath, file.data); // Salva o arquivo
+
+        // Atualizar o caminho da imagem no banco de dados
+        const relativePath = path.join('uploads', fileName); // Caminho relativo
+        const query = 'UPDATE usuarios SET foto_perfil = ? WHERE id = ?';
+        await db.promise().query(query, [relativePath, usuario_id]);
+
+        res.json({ success: true, message: 'Imagem salva com sucesso!', filePath: relativePath });
+    } catch (error) {
+        console.error('Erro ao fazer upload da imagem:', error);
+        res.status(500).json({ success: false, message: 'Erro ao fazer upload da imagem' });
+    }
+});
+
 app.post('/login', (req, res) => {
     const { email, password } = req.body;
 
@@ -325,12 +393,12 @@ app.post('/login', (req, res) => {
     }
 
     const query = `
-        SELECT usuarios.id, usuarios.nome, cargos.nome AS cargo
+        SELECT usuarios.id, usuarios.nome, usuarios.senha, cargos.nome AS cargo
         FROM usuarios
         JOIN cargos ON usuarios.cargo_id = cargos.id
-        WHERE usuarios.email = ? AND usuarios.senha = ? `;
+        WHERE usuarios.email = ?`;
 
-    db.query(query, [email, password], (err, results) => {
+    db.query(query, [email], async (err, results) => {
         if (err) {
             console.error('Erro ao consultar o banco de dados:', err);
             return res.status(500).json({ success: false, message: 'Erro no servidor' });
@@ -341,27 +409,32 @@ app.post('/login', (req, res) => {
         }
 
         const usuario = results[0];
+
+        // Verifica a senha usando bcrypt
+        const match = await bcrypt.compare(password, usuario.senha);
+        if (!match) {
+            return res.status(401).json({ success: false, message: 'Email ou senha incorretos' });
+        }
+
         return res.json({ success: true, nome: usuario.nome, cargo: usuario.cargo });
     });
 });
 
 app.get('/usuario', (req, res) => {
     const email = req.query.email;
-
     if (!email) {
         return res.status(400).json({ success: false, message: 'Email é obrigatório' });
     }
 
     const query = `
-        SELECT usuarios.id, usuarios.nome, usuarios.matricula, cargos.nome AS cargo
-        FROM usuarios
-        JOIN cargos ON usuarios.cargo_id = cargos.id
-        WHERE usuarios.email = ? `;
-
+    SELECT usuarios.*, cargos.nome AS cargo
+    FROM usuarios
+    LEFT JOIN cargos ON usuarios.cargo_id = cargos.id
+    WHERE usuarios.email = ?`;
     db.query(query, [email], (err, results) => {
         if (err) {
-            console.error('Erro ao consultar o banco de dados:', err);
-            return res.status(500).json({ success: false, message: 'Erro no servidor' });
+            console.error('Erro ao buscar usuário:', err);
+            return res.status(500).json({ success: false, message: 'Erro ao buscar usuário' });
         }
 
         if (results.length === 0) {
@@ -369,13 +442,9 @@ app.get('/usuario', (req, res) => {
         }
 
         const usuario = results[0];
-        res.json({
-            success: true,
-            nome: usuario.nome,
-            matricula: usuario.matricula,
-            cargo: usuario.cargo,
-            id: usuario.id,
-        });
+        // Construa a URL da imagem corretamente
+        const urlImagem = `${req.protocol}://${req.get('host')}/${usuario.foto_perfil}`;
+        res.json({ success: true, ...usuario, foto_perfil: urlImagem }); // Retorna a URL da imagem
     });
 });
 
@@ -398,7 +467,7 @@ app.get('/patrimonio', (req, res) => {
 
 app.get('/extintor/:patrimonio', (req, res) => {
     const patrimonio = req.params.patrimonio;
-    const qrCodePath = `uploads/${patrimonio}-qrcode.png`; 
+    const qrCodePath = `uploads/${patrimonio}-qrcode.png`;
     const qrCodeUrl = `${req.protocol}://${req.get('host')}/${qrCodePath}`;
 
     const query = `
@@ -444,7 +513,7 @@ app.get('/extintor/:patrimonio', (req, res) => {
         }
 
         const extintor = results[0];
-        extintor.QR_Code = qrCodeUrl; 
+        extintor.QR_Code = qrCodeUrl;
         console.log('Dados do extintor:', extintor); // Adicione este log
         res.status(200).json({ success: true, extintor });
     });
@@ -694,36 +763,142 @@ app.put('/atualizar_status_extintor', (req, res) => {
     });
 });
 
-const nodemailer = require('nodemailer');
 
 // Configuração do transporte do Nodemailer
 const transporter = nodemailer.createTransport({
     service: 'gmail', // ou outro serviço de e-mail
     auth: {
-        user: 'seu-email@gmail.com', // seu e-mail
-        pass: 'sua-senha' // sua senha
+        user: 'suporte.redefinir.senha.imt.pi@gmail.com', // seu e-mail
+        pass: 'eioj nzcm dcpp xjgd' // sua senha (use senha de aplicativo se necessário)
     }
 });
 
-// Endpoint para enviar e-mail
-app.post('/enviar-email', (req, res) => {
-    const { subject, body } = req.body;
+// Rota para recuperação de senha
+app.post('/forgot-password', (req, res) => {
+    const { email } = req.body;
 
-    const mailOptions = {
-        from: 'lucas.silva.b231@gmail.com', // seu e-mail
-        to: 'lucasbarboza299@gmail.com', // e-mail para onde você quer enviar
-        subject: subject,
-        text: body
-    };
-
-    transporter.sendMail(mailOptions, (error, info) => {
-        if (error) {
-            console.error('Erro ao enviar e-mail:', error);
-            return res.status(500).json({ success: false, message: 'Erro ao enviar e-mail' });
+    const sql = 'SELECT * FROM usuarios WHERE email = ?';
+    db.query(sql, [email], (err, results) => {
+        if (err) {
+            console.error('Erro ao buscar usuário:', err);
+            return res.status(500).json({ error: 'Erro no servidor ao buscar usuário' });
         }
-        res.status(200).json({ success: true, message: 'E-mail enviado: ' + info.response });
+
+        if (results.length === 0) {
+            return res.status(404).json({ error: 'Email não encontrado' });
+        }
+
+        const token = crypto.randomBytes(20).toString('hex');
+        const tokenExpiration = new Date(Date.now() + 3600000); // 1 hora a partir de agora
+        const updateTokenSql = 'UPDATE usuarios SET reset_password_token = ?, reset_password_expires = ? WHERE email = ?';
+
+        db.query(updateTokenSql, [token, tokenExpiration, email], (err) => {
+            if (err) {
+                console.error('Erro ao salvar o token no banco de dados:', err);
+                return res.status(500).json({ error: 'Erro no servidor ao salvar token de recuperação' });
+            }
+
+            const resetUrl = `http://localhost:3001/reset-password?token=${token}`; const mailOptions = {
+                from: 'suporte.redefinir.senha.imt.pi@gmail.com',
+                to: email,
+                subject: 'Recuperação de senha',
+                text: `Você solicitou a recuperação de senha. Clique no link a seguir para redefinir sua senha: ${resetUrl}`,
+                html: `<p>Você solicitou a recuperação de senha. Clique no link a seguir para redefinir sua senha:</p><p><a href="${resetUrl}">Redefinir senha</a></p>`,
+            };
+
+            transporter.sendMail(mailOptions, (err, info) => {
+                if (err) {
+                    console.error('Erro ao enviar email:', err);
+                    return res.status(500).json({ error: 'Erro ao enviar email de recuperação' });
+                }
+                console.log('Email enviado:', info.response);
+                res.status(200).json({ message: 'Email de recuperação enviado com sucesso' });
+            });
+        });
     });
 });
+
+// Rota para redefinir a senha
+app.post('/reset-password', [
+    check('token').not().isEmpty().withMessage('Token é obrigatório'),
+    check('newPassword').isLength({ min: 6 }).withMessage('A nova senha deve ter pelo menos 6 caracteres')
+], async (req, res) => {
+    console.log('Dados recebidos:', req.body); // Adicione este log
+
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        console.log('Erros de validação:', errors.array());
+        return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { token, newPassword } = req.body;
+    console.log('Token recebido:', token); // Log para verificar o token
+
+    const sql = 'SELECT * FROM usuarios WHERE reset_password_token = ? AND reset_password_expires > NOW()';
+    db.query(sql, [token], async (err, results) => {
+        if (err) {
+            console.error('Erro ao buscar token no banco de dados:', err);
+            return res.status(500).json({ error: 'Erro no servidor ao verificar token' });
+        }
+
+        if (results.length === 0) {
+            return res.status(400).json({ error: 'Token inválido ou expirado' });
+        }
+
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        const updatePasswordSql = 'UPDATE usuarios SET senha = ?, reset_password_token = NULL, reset_password_expires = NULL WHERE reset_password_token = ?';
+
+        db.query(updatePasswordSql, [hashedPassword, token], (err) => {
+            if (err) {
+                console.error('Erro ao atualizar senha no banco de dados:', err);
+                return res.status(500).json({ error: 'Erro ao atualizar senha' });
+            }
+
+            res.status(200).json({ message: 'Senha atualizada com sucesso' });
+        });
+    });
+});
+
+// Rota GET para exibir o formulário de redefinição de senha
+app.get('/reset-password', (req, res) => {
+    const { token } = req.query;
+    if (!token) {
+        return res.status(400).send('Token inválido ou ausente.');
+    }
+
+    res.send(`
+        <!DOCTYPE html>
+        <html lang="pt-BR">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Redefinir Senha</title>
+            <style>
+                body { font-family: Arial, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+                .container { width: 100%; max-width: 400px; padding: 20px; border: 1px solid #ccc; border-radius: 5px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); }
+                h2 { text-align: center; }
+                label { display: block; margin-top: 10px; }
+                input[type="password"], button { width: 100%; padding: 10px; margin-top: 10px; }
+                button { background-color: #007bff; color: white; border: none; cursor: pointer; }
+                button:hover { background-color: #0056b3; }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h2>Redefinir Senha</h2>
+                <form action="/reset-password" method="POST">
+                    <input type="hidden" name="token" value="${token}" />
+                    <label for="newPassword">Nova Senha:</label>
+                    <input type="password" name="newPassword" id="newPassword" required minlength="6" />
+                    <button type="submit">Redefinir Senha</button>
+                </form>
+            </div>
+        </body>
+        </html>
+    `);
+});
+
+
 
 const PORT = 3001;
 app.listen(PORT, '0.0.0.0', async () => {

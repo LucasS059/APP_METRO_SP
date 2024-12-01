@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:mobilegestaoextintores/src/telas/Redefinir_Senha/Tela_Esqueceu_Senha.dart';
 import 'dart:convert';
 import 'package:mobilegestaoextintores/src/telas/TelaPrincipal.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -99,7 +100,13 @@ class _TelaLoginState extends State<TelaLogin> {
                       _buildPasswordField(),
                       const SizedBox(height: 20),
                       TextButton(
-                        onPressed: () {},
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (context) => TelaEsqueceuSenha()),
+                          );
+                        },
                         child: const Text(
                           'Esqueceu a senha?',
                           style:

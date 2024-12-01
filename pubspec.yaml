@@ -41,11 +41,12 @@ dependencies:
   flutter_barcode_sdk: ^2.2.8
   provider: ^6.1.2
   google_fonts: ^6.2.1
-  intl: ^0.20.1
+  intl: ^0.17.0
   qr_code_scanner_plus: ^2.0.6
   url_launcher: ^6.1.7 # Use a última versão disponível
   share_plus: ^10.1.2
-
+  mailer: ^6.2.0
+  email_validator: ^3.0.0
 
 
 dev_dependencies:

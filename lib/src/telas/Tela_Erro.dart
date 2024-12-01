@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
+import 'package:shared_preferences/shared_preferences.dart';
+
 class TelaReportarErro extends StatefulWidget {
   const TelaReportarErro({super.key});
 
@@ -11,19 +13,32 @@ class TelaReportarErro extends StatefulWidget {
 
 class _TelaReportarErroState extends State<TelaReportarErro> {
   final TextEditingController _controller = TextEditingController();
+  String? _usuarioEmail;
+
+  @override
+  void initState() {
+    super.initState();
+    _carregarEmailUsuario();
+  }
+
+  Future<void> _carregarEmailUsuario() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _usuarioEmail = prefs.getString('usuario_email');
+    });
+  }
 
   void _enviarErro() async {
     final erro = _controller.text.trim();
-    if (erro.isNotEmpty) {
+    if (erro.isNotEmpty && _usuarioEmail != null) {
       final response = await http.post(
-        Uri.parse(
-            'http://localhost:3001/enviar-email'), // URL do seu servidor
+        Uri.parse('http://localhost:3001/enviar-email'), // URL do seu servidor
         headers: {
           'Content-Type': 'application/json',
         },
         body: json.encode({
-          'subject': 'Relato de Erro',
-          'body': erro,
+          'subject': 'Relato de Erro - Aplicativo', // Assunto do e-mail
+          'body': 'Erro reportado por: $_usuarioEmail\n\n$erro', // Inclui o email do usuário
         }),
       );
 
@@ -45,7 +60,7 @@ class _TelaReportarErroState extends State<TelaReportarErro> {
       );
     }
   }
-
+  
   @override
   Widget build(BuildContext context) {
     return Scaffold(
