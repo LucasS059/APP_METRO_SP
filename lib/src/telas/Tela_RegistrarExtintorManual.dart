@@ -31,7 +31,6 @@ class _TelaRegistrarExtintorState extends State<TelaRegistrarExtintor> {
 
   String? _tipoSelecionado;
   String? _linhaSelecionada;
-  String? _localizacaoSelecionada;
   String? _statusSelecionado;
   String? _qrCodeUrl;
   String? _capacidadeSelecionada;
@@ -430,8 +429,7 @@ class _TelaRegistrarExtintorState extends State<TelaRegistrarExtintor> {
                       onChanged: (value) {
                         setState(() {
                           _linhaSelecionada = value;
-                          _localizacaoSelecionada =
-                              null; // Reseta a localização ao mudar a linha
+// Reseta a localização ao mudar a linha
                           if (value != null) {
                             fetchLocalizacoes(value);
                           }

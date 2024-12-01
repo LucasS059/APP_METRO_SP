@@ -69,9 +69,9 @@ app.post('/registrar_extintor', async (req, res) => {
     try {
         // Primeiro, insira a localização na tabela localizacoes
         const localizacaoQuery = `
-            INSERT INTO localizacoes (Linha_ID, Estacao, Descricao_Local, Observacoes)
-            VALUES (?, ?, ?, ?)
-        `;
+    INSERT INTO localizacoes (Linha_ID, Estacao, Descricao_Local, Observacoes)
+    VALUES (?, ?, ?, ?)
+`;
         const localizacaoParams = [linha_id, estacao, descricao_local, observacoes_local];
         const [localizacaoResult] = await db.promise().query(localizacaoQuery, localizacaoParams);
 
@@ -99,7 +99,7 @@ app.post('/registrar_extintor', async (req, res) => {
         const qrCodeUrl = `${req.protocol}://${req.get('host')}/uploads/${patrimonio}-qrcode.png`;
         await db.promise().query('UPDATE Extintores SET QR_Code = ? WHERE Patrimonio = ?', [qrCodeUrl, patrimonio]);
 
-        res.json({ success: true, message: 'Extintor registrado com sucesso!', qrCodeUrl: qrCodeUrl });    
+        res.json({ success: true, message: 'Extintor registrado com sucesso!', qrCodeUrl: qrCodeUrl });
     } catch (err) {
         console.error('Erro ao registrar extintor:', err);
         res.status(500).json({ success: false, message: 'Erro ao registrar o extintor.' });
@@ -398,43 +398,41 @@ app.get('/patrimonio', (req, res) => {
 
 app.get('/extintor/:patrimonio', (req, res) => {
     const patrimonio = req.params.patrimonio;
-    const qrCodePath = `uploads/${patrimonio}-qrcode.png`; // Corrija o espaço extra
+    const qrCodePath = `uploads/${patrimonio}-qrcode.png`; 
     const qrCodeUrl = `${req.protocol}://${req.get('host')}/${qrCodePath}`;
 
     const query = `
-        SELECT 
-            e.Patrimonio, 
-            e.Codigo_Fabricante, 
-            e.Data_Fabricacao, 
-            e.Data_Validade, 
-            e.Ultima_Recarga, 
-            e.Proxima_Inspecao, 
-            e.QR_Code, 
-            e.Observacoes AS Observacoes_Extintor,
-            s.nome AS Status, 
-            t.tipo AS Tipo, 
-            c.descricao AS Capacidade, 
-            l.Area AS Localizacao_Area, 
-            l.Subarea AS Localizacao_Subarea, 
-            l.Local_Detalhado AS Localizacao_Detalhada, 
-            l.Observacoes AS Observacoes_Local,
-            ln.nome AS Linha_Nome, 
-            ln.codigo AS Linha_Codigo, 
-            ln.descricao AS Linha_Descricao,
-            hm.ID_Manutencao, 
-            hm.Data_Manutencao, 
-            hm.Descricao AS Manutencao_Descricao, 
-            hm.Responsavel_Manutencao, 
-            hm.Observacoes AS Manutencao_Observacoes
-        FROM extintores e
-        JOIN status_extintor s ON e.status_id = s.id
-        JOIN tipos_extintores t ON e.Tipo_ID = t.id
-        JOIN capacidades c ON e.Capacidade_ID = c.id
-        JOIN localizacoes l ON e.ID_Localizacao = l.ID_Localizacao
-        LEFT JOIN linhas ln ON e.Linha_ID = ln.id
-        LEFT JOIN historico_manutencao hm ON e.Patrimonio = hm.ID_Extintor
-        WHERE e.Patrimonio = ?
-    `;
+    SELECT 
+        e.Patrimonio, 
+        e.Codigo_Fabricante, 
+        e.Data_Fabricacao, 
+        e.Data_Validade, 
+        e.Ultima_Recarga, 
+        e.Proxima_Inspecao, 
+        e.QR_Code, 
+        e.Observacoes AS Observacoes_Extintor,
+        s.nome AS Status, 
+        t.tipo AS Tipo, 
+        c.descricao AS Capacidade, 
+        l.Estacao AS Localizacao_Area,
+        l.Descricao_Local AS Localizacao_Subarea,
+        l.Observacoes AS Observacoes_Local,
+        ln.nome AS Linha_Nome, 
+        ln.codigo AS Linha_Codigo, 
+        ln.descricao AS Linha_Descricao,
+        hm.Data_Manutencao, 
+        hm.Descricao AS Manutencao_Descricao, 
+        hm.Responsavel_Manutencao, 
+        hm.Observacoes AS Manutencao_Observacoes
+    FROM extintores e
+    JOIN status_extintor s ON e.status_id = s.id
+    JOIN tipos_extintores t ON e.Tipo_ID = t.id
+    JOIN capacidades c ON e.Capacidade_ID = c.id
+    JOIN localizacoes l ON e.ID_Localizacao = l.ID_Localizacao
+    LEFT JOIN linhas ln ON e.Linha_ID = ln.id
+    LEFT JOIN historico_manutencao hm ON e.Patrimonio = hm.ID_Extintor
+    WHERE e.Patrimonio = ?
+`;
     db.query(query, [patrimonio], (err, results) => {
         if (err) {
             console.error('Erro ao buscar extintor:', err);
@@ -446,13 +444,11 @@ app.get('/extintor/:patrimonio', (req, res) => {
         }
 
         const extintor = results[0];
-
-        // Adiciona a URL do QR Code
-        extintor.QR_Code = qrCodeUrl; // Assegure-se de que a URL está sendo atribuída corretamente
+        extintor.QR_Code = qrCodeUrl; 
+        console.log('Dados do extintor:', extintor); // Adicione este log
         res.status(200).json({ success: true, extintor });
     });
 });
-
 //======================= ENDPOINTS PARA CONSULTA ====================================
 
 app.get('/extintores', (req, res) => {
@@ -605,17 +601,19 @@ app.get('/capacidades', (req, res) => {
 });
 
 // Endpoint para buscar a localização do extintor
+// Endpoint para buscar a localização do extintor
 app.get('/extintor/localizacao/:patrimonio', (req, res) => {
     const patrimonio = req.params.patrimonio;
 
     const query = `
         SELECT 
-            l.Area,
-            l.Subarea,
-            l.Local_Detalhado,
-            l.Observacoes
+            l.Estacao,
+            l.Descricao_Local,
+            l.Observacoes,
+            ln.nome AS Linha
         FROM extintores e
         JOIN localizacoes l ON e.ID_Localizacao = l.ID_Localizacao
+        JOIN linhas ln ON l.Linha_ID = ln.id
         WHERE e.Patrimonio = ?
     `;
 

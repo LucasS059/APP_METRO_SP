@@ -73,7 +73,7 @@ class _TelaConsultaLocalizacaoExtintorState
       SnackBar(
         content: Text(message),
         backgroundColor: color,
-        duration: Duration(seconds: 3),
+        duration: const Duration(seconds: 3),
       ),
     );
   }
@@ -81,42 +81,91 @@ class _TelaConsultaLocalizacaoExtintorState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF5F5F5),
       appBar: AppBar(
         title: const Text('Consulta de Localização do Extintor'),
         backgroundColor: const Color(0xFF011689),
+        centerTitle: true,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            TextField(
-              controller: _patrimonioController,
-              decoration: InputDecoration(
-                labelText: 'Número do Patrimônio',
-                border: OutlineInputBorder(),
-              ),
-              onChanged: (value) {
-                setState(() {
-                  _patrimonio = value;
-                });
-              },
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _buscarLocalizacao,
-              child: _isLoading
-                  ? const CircularProgressIndicator(color: Colors.white)
-                  : const Text('Buscar Localização'),
-            ),
-            const SizedBox(height: 20),
-            if (_errorMessage.isNotEmpty)
-              Text(
-                _errorMessage,
-                style: const TextStyle(color: Colors.red),
-              ),
-            if (_localizacaoData != null) _buildLocalizacaoDetails(),
-          ],
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildInputSection(),
+              const SizedBox(height: 20),
+              if (_errorMessage.isNotEmpty) _buildErrorMessage(),
+              if (_localizacaoData != null) _buildLocalizacaoDetails(),
+            ],
+          ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildInputSection() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(15),
+        boxShadow: const [
+          BoxShadow(
+            color: Colors.black26,
+            blurRadius: 8,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          TextField(
+            controller: _patrimonioController,
+            decoration: InputDecoration(
+              labelText: 'Número do Patrimônio',
+              border: OutlineInputBorder(),
+              filled: true,
+              fillColor: const Color(0xFFF7F9FC),
+              prefixIcon: const Icon(Icons.search, color: Color(0xFF011689)),
+            ),
+            onChanged: (value) {
+              setState(() {
+                _patrimonio = value;
+              });
+            },
+          ),
+          const SizedBox(height: 16),
+          ElevatedButton(
+            onPressed: _buscarLocalizacao,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF011689),
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              elevation: 3,
+            ),
+            child: _isLoading
+                ? const CircularProgressIndicator(color: Colors.white)
+                : const Text(
+                    'Buscar Localização',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildErrorMessage() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12.0),
+      child: Text(
+        _errorMessage,
+        style: const TextStyle(color: Colors.red, fontSize: 14),
+        textAlign: TextAlign.center,
       ),
     );
   }
@@ -124,6 +173,7 @@ class _TelaConsultaLocalizacaoExtintorState
   Widget _buildLocalizacaoDetails() {
     return Card(
       elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -132,11 +182,15 @@ class _TelaConsultaLocalizacaoExtintorState
             Text('Localização do Extintor',
                 style:
                     const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 10),
-            Text('Área: ${_localizacaoData!['Area']}'),
-            Text('Subárea: ${_localizacaoData!['Subarea'] ?? 'N/A'}'),
-            Text('Detalhes: ${_localizacaoData!['Local_Detalhado']}'),
-            Text('Observações: ${_localizacaoData!['Observacoes'] ?? 'N/A'}'),
+            const Divider(),
+            Text('Linha: ${_localizacaoData!['Linha']}',
+                style: const TextStyle(fontSize: 16)),
+            Text('Estação: ${_localizacaoData!['Estacao']}',
+                style: const TextStyle(fontSize: 16)),
+            Text('Descrição Local: ${_localizacaoData!['Descricao_Local']}',
+                style: const TextStyle(fontSize: 16)),
+            Text('Observações: ${_localizacaoData!['Observacoes'] ?? 'N/A'}',
+                style: const TextStyle(fontSize: 16)),
           ],
         ),
       ),

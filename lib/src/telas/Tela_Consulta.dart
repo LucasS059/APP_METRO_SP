@@ -14,7 +14,6 @@ class _TelaConsultaExtintorState extends State<TelaConsultaExtintor> {
   final TextEditingController _patrimonioController = TextEditingController();
   String _patrimonio = "";
   bool _isLoading = false;
-  bool _isFetchingPatrimonios = false;
   Map<String, dynamic>? _extintorData;
   String _errorMessage = "";
   List<String> _patrimoniosDisponiveis = [];
@@ -36,12 +35,12 @@ class _TelaConsultaExtintorState extends State<TelaConsultaExtintor> {
 
   Future<void> _fetchPatrimoniosDisponiveis() async {
     setState(() {
-      _isFetchingPatrimonios = true;
       _errorMessage = '';
     });
 
     try {
-      final url = Uri.parse('http://localhost:3001/patrimonio'); // Substitua localhost pelo IP da sua máquina
+      final url = Uri.parse(
+          'http://localhost:3001/patrimonio'); // Substitua localhost pelo IP da sua máquina
       final response = await http.get(url);
 
       if (response.statusCode == 200) {
@@ -59,16 +58,13 @@ class _TelaConsultaExtintorState extends State<TelaConsultaExtintor> {
         }
       } else {
         setState(() {
-          _errorMessage = "Erro ao carregar patrimônios. Tente novamente mais tarde.";
+          _errorMessage =
+              "Erro ao carregar patrimônios. Tente novamente mais tarde.";
         });
       }
     } catch (e) {
       setState(() {
         _errorMessage = "Erro na conexão. Verifique sua internet.";
-      });
-    } finally {
-      setState(() {
-        _isFetchingPatrimonios = false;
       });
     }
   }
@@ -78,7 +74,7 @@ class _TelaConsultaExtintorState extends State<TelaConsultaExtintor> {
       SnackBar(
         content: Text(message),
         backgroundColor: color,
-        duration: Duration(seconds: 3),
+        duration: const Duration(seconds: 3),
       ),
     );
   }
@@ -96,7 +92,8 @@ class _TelaConsultaExtintorState extends State<TelaConsultaExtintor> {
       _errorMessage = "";
     });
 
-    final url = Uri.parse('http://localhost:3001/extintor/$_patrimonio'); // Substitua localhost pelo IP da sua máquina
+    final url = Uri.parse(
+        'http://localhost:3001/extintor/$_patrimonio'); // Substitua localhost pelo IP da sua máquina
 
     try {
       final response = await http.get(url);
@@ -140,7 +137,7 @@ class _TelaConsultaExtintorState extends State<TelaConsultaExtintor> {
         title: const Text(
           'Consulta',
           style: TextStyle(
- fontWeight: FontWeight.bold,
+            fontWeight: FontWeight.bold,
             color: Color(0xFFD9D9D9),
           ),
         ),
@@ -184,44 +181,32 @@ class _TelaConsultaExtintorState extends State<TelaConsultaExtintor> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (_isFetchingPatrimonios)
-            const Center(
-              child: CircularProgressIndicator(),
-            )
-          else if (_patrimoniosDisponiveis.isEmpty)
-            const Center(
-              child: Text(
-                'Nenhum patrimônio disponível.',
-                style: TextStyle(fontSize: 16, color: Colors.red),
+          DropdownButtonFormField<String>(
+            decoration: InputDecoration(
+              labelText: 'Selecione o Patrimônio',
+              labelStyle: const TextStyle(color: Color(0xFF011689)),
+              filled: true,
+              fillColor: const Color(0xFFF7F9FC),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide.none,
               ),
-            )
-          else
-            DropdownButtonFormField<String>(
-              decoration: InputDecoration(
-                labelText: 'Selecione o Patrimônio',
-                labelStyle: const TextStyle(color: Color(0xFF011689)),
-                filled: true,
-                fillColor: const Color(0xFFF7F9FC),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide.none,
-                ),
-              ),
-              items: _patrimoniosDisponiveis.map((String patrimonio) {
-                return DropdownMenuItem<String>(
-                  value: patrimonio,
-                  child: Text(patrimonio),
-                );
-              }).toList(),
-              onChanged: (String? value) {
-                if (value != null) {
-                  setState(() {
-                    _patrimonio = value;
-                    _patrimonioController.text = value;
-                  });
-                }
-              },
             ),
+            items: _patrimoniosDisponiveis.map((String patrimonio) {
+              return DropdownMenuItem<String>(
+                value: patrimonio,
+                child: Text(patrimonio),
+              );
+            }).toList(),
+            onChanged: (String? value) {
+              if (value != null) {
+                setState(() {
+                  _patrimonio = value;
+                  _patrimonioController.text = value;
+                });
+              }
+            },
+          ),
           const SizedBox(height: 16),
           TextField(
             controller: _patrimonioController,
@@ -290,17 +275,16 @@ class _TelaConsultaExtintorState extends State<TelaConsultaExtintor> {
           'Data de Fabricação: ${formatDate(_extintorData!['Data_Fabricacao'])}',
           'Data de Validade: ${formatDate(_extintorData!['Data_Validade'])}',
           'Última Recarga: ${formatDate(_extintorData!['Ultima_Recarga'])}',
-          'Próxima Inspeção: ${formatDate(_extintorData!['Proxima_Inspecao'])}',
+          'Próxima Inspeção : ${formatDate(_extintorData!['Proxima_Inspecao'])}',
           'Status: ${_extintorData!['Status']}',
           'Observações: ${_extintorData!['Observacoes_Extintor']}',
         ]),
         const SizedBox(height: 20),
-        _buildQrCode(_extintorData!['QRCode']),
+        _buildQrCode(_extintorData!['QR_Code']),
         const SizedBox(height: 20),
         _buildDetailCard('Localização do Extintor', [
-          'Área: ${_extintorData!['Localizacao_Area']}',
-          'Subárea: ${_extintorData!['Localizacao_Subarea']}',
-          'Detalhes: ${_extintorData!['Localizacao_Detalhada']}',
+          'Estação: ${_extintorData!['Estacao']}',
+          'Descrição: ${_extintorData!['Descricao_Local']}',
           'Observações: ${_extintorData!['Observacoes_Local']}',
         ]),
         const SizedBox(height: 20),
@@ -311,7 +295,7 @@ class _TelaConsultaExtintorState extends State<TelaConsultaExtintor> {
         ]),
         const SizedBox(height: 20),
         _buildDetailCard('Histórico de Manutenção', [
-          'Data da Manutenção: ${_extintorData!['Data_Manutencao'] ?? "Não disponível"}',
+          'Data da Manutenção: ${formatDate(_extintorData!['Data_Manutencao'] ?? "Não disponível")}',
           'Responsável: ${_extintorData!['Responsavel_Manutencao'] ?? "Não disponível"}',
           'Descrição: ${_extintorData!['Manutencao_Descricao'] ?? "Não disponível"}',
           'Observações: ${_extintorData!['Manutencao_Observacoes'] ?? "Não disponível"}',
@@ -332,7 +316,7 @@ class _TelaConsultaExtintorState extends State<TelaConsultaExtintor> {
 
     final qrCodeImageUrl = qrCodeUrl.startsWith('http')
         ? qrCodeUrl
-        : 'http://localhost:3001/$qrCodeUrl'; // Substitua localhost pelo IP da sua máquina
+        : 'http://localhost:3001/$qrCodeUrl';
 
     return Image.network(
       qrCodeImageUrl,

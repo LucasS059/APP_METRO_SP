@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:mobilegestaoextintores/src/telas/TelaScanQR.dart';
 import 'telas/Tela_Login.dart';
 import 'telas/tela_info_extintor.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 
 class App extends StatefulWidget {
