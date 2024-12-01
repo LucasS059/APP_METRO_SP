@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:mobilegestaoextintores/src/telas/Tela_Consulta.dart';
-import 'package:mobilegestaoextintores/src/telas/Tela_Manutencao.dart';
+import 'package:mobilegestaoextintores/src/telas/Tela_Localizacao.dart';
 import 'package:mobilegestaoextintores/src/telas/Tela_RegistrarExtintorManual.dart';
+import 'package:mobilegestaoextintores/src/telas/Tela_Selecionar_Manutencao.dart';
 import 'tela_configuracao.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -164,15 +165,19 @@ class TelaPrincipal extends StatelessWidget {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                              builder: (context) => ManutencaoExtintorPage()),
+                              builder: (context) => TelaSelecaoPage()),
                         );
                       },
                     ),
                     _buildIconButton(
                       icon: Icons.map,
                       label: 'Localização',
-                      onTap: () {
-                        _navigateTo(context, 'Localização');
+                       onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => TelaConsultaLocalizacaoExtintor()),
+                        );
                       },
                     ),
                     _buildIconButton(
@@ -257,12 +262,6 @@ class TelaPrincipal extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-
-  void _navigateTo(BuildContext context, String pageName) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Navegando para $pageName')),
     );
   }
 }

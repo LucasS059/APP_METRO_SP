@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-
 import 'package:intl/intl.dart';
 
 class TelaConsultaExtintor extends StatefulWidget {
@@ -15,16 +14,16 @@ class _TelaConsultaExtintorState extends State<TelaConsultaExtintor> {
   final TextEditingController _patrimonioController = TextEditingController();
   String _patrimonio = "";
   bool _isLoading = false;
-  bool _isFetchingPatrimonios = false; // Indica se estamos buscando a lista
+  bool _isFetchingPatrimonios = false;
   Map<String, dynamic>? _extintorData;
   String _errorMessage = "";
-  List<String> _patrimoniosDisponiveis = []; // Lista dinâmica de patrimônios
+  List<String> _patrimoniosDisponiveis = [];
+
   String formatDate(String date) {
     try {
       final parsedDate = DateTime.parse(date);
       return DateFormat('dd/MM/yyyy HH:mm:ss').format(parsedDate);
     } catch (e) {
-      // Se a data não for válida, retornar uma data de fallback
       return 'Data inválida';
     }
   }
@@ -38,26 +37,20 @@ class _TelaConsultaExtintorState extends State<TelaConsultaExtintor> {
   Future<void> _fetchPatrimoniosDisponiveis() async {
     setState(() {
       _isFetchingPatrimonios = true;
-      _errorMessage = ''; // Limpar erros anteriores
+      _errorMessage = '';
     });
 
     try {
-      final url =
-          Uri.parse('http://10.0.2.2:3001/patrimonio'); // Ajuste o endereço
-      print('URL para buscar patrimônios: $url'); // Log
-
+      final url = Uri.parse('http://localhost:3001/patrimonio'); // Substitua localhost pelo IP da sua máquina
       final response = await http.get(url);
-      print('Resposta da API: ${response.body}'); // Log
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['success']) {
           setState(() {
             _patrimoniosDisponiveis = (data['patrimônios'] as List)
-                .map(
-                    (item) => item.toString()) // Converte cada item para String
+                .map((item) => item.toString())
                 .toList();
-            print('Patrimônios carregados: $_patrimoniosDisponiveis'); // Log
           });
         } else {
           setState(() {
@@ -66,8 +59,7 @@ class _TelaConsultaExtintorState extends State<TelaConsultaExtintor> {
         }
       } else {
         setState(() {
-          _errorMessage =
-              "Erro ao carregar patrimônios. Tente novamente mais tarde.";
+          _errorMessage = "Erro ao carregar patrimônios. Tente novamente mais tarde.";
         });
       }
     } catch (e) {
@@ -97,21 +89,20 @@ class _TelaConsultaExtintorState extends State<TelaConsultaExtintor> {
       return;
     }
 
-    FocusScope.of(context).unfocus(); // Fecha o teclado
+    FocusScope.of(context).unfocus();
 
     setState(() {
       _isLoading = true;
       _errorMessage = "";
     });
 
-    final url = Uri.parse('http://10.0.2.2:3001/extintor/$_patrimonio');
+    final url = Uri.parse('http://localhost:3001/extintor/$_patrimonio'); // Substitua localhost pelo IP da sua máquina
 
     try {
       final response = await http.get(url);
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-
         if (data['success']) {
           setState(() {
             _extintorData = data['extintor'];
@@ -142,22 +133,22 @@ class _TelaConsultaExtintorState extends State<TelaConsultaExtintor> {
   }
 
   @override
-   Widget build(BuildContext context) {
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
       appBar: AppBar(
         title: const Text(
-          'Consulta de Extintor',
+          'Consulta',
           style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Color(0xFFD9D9D9), // Cor do texto
+ fontWeight: FontWeight.bold,
+            color: Color(0xFFD9D9D9),
           ),
         ),
         backgroundColor: const Color(0xFF011689),
         centerTitle: true,
         elevation: 4,
         iconTheme: const IconThemeData(
-          color: Color(0xFFD9D9D9), // Cor da seta de voltar
+          color: Color(0xFFD9D9D9),
         ),
       ),
       body: SingleChildScrollView(
@@ -226,7 +217,7 @@ class _TelaConsultaExtintorState extends State<TelaConsultaExtintor> {
                 if (value != null) {
                   setState(() {
                     _patrimonio = value;
-                    _patrimonioController.text = value; // Preenche o campo
+                    _patrimonioController.text = value;
                   });
                 }
               },
@@ -304,7 +295,6 @@ class _TelaConsultaExtintorState extends State<TelaConsultaExtintor> {
           'Observações: ${_extintorData!['Observacoes_Extintor']}',
         ]),
         const SizedBox(height: 20),
-        // Exibir QR Code Salvo
         _buildQrCode(_extintorData!['QRCode']),
         const SizedBox(height: 20),
         _buildDetailCard('Localização do Extintor', [
@@ -321,10 +311,10 @@ class _TelaConsultaExtintorState extends State<TelaConsultaExtintor> {
         ]),
         const SizedBox(height: 20),
         _buildDetailCard('Histórico de Manutenção', [
-          'Data da Manutenção: ${formatDate(_extintorData!['Data_Manutencao'])}',
-          'Responsável: ${_extintorData!['Responsavel_Manutencao']}',
-          'Descrição: ${_extintorData!['Manutencao_Descricao']}',
-          'Observações: ${_extintorData!['Manutencao_Observacoes']}',
+          'Data da Manutenção: ${_extintorData!['Data_Manutencao'] ?? "Não disponível"}',
+          'Responsável: ${_extintorData!['Responsavel_Manutencao'] ?? "Não disponível"}',
+          'Descrição: ${_extintorData!['Manutencao_Descricao'] ?? "Não disponível"}',
+          'Observações: ${_extintorData!['Manutencao_Observacoes'] ?? "Não disponível"}',
         ]),
       ],
     );
@@ -340,8 +330,12 @@ class _TelaConsultaExtintorState extends State<TelaConsultaExtintor> {
       );
     }
 
+    final qrCodeImageUrl = qrCodeUrl.startsWith('http')
+        ? qrCodeUrl
+        : 'http://localhost:3001/$qrCodeUrl'; // Substitua localhost pelo IP da sua máquina
+
     return Image.network(
-      qrCodeUrl,
+      qrCodeImageUrl,
       height: 200.0,
       width: 200.0,
       errorBuilder: (context, error, stackTrace) {

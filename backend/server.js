@@ -1,4 +1,4 @@
-const fs = require('fs'); // Para manipular o sistema de arquivos
+const fs = require('fs');
 const mysql = require('mysql2');
 const cors = require('cors');
 const PDFDocument = require('pdfkit');
@@ -6,14 +6,14 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const QRCode = require('qrcode');
 const path = require('path');
-const moment = require('moment');
 const app = express();
+const moment = require('moment');
 
 // Configuração do banco de dados
 const db = mysql.createConnection({
     host: 'localhost',
     user: 'root',
-    password: 'imtdb',
+    password: '9534',
     database: 'metro_sp',
 });
 
@@ -40,202 +40,156 @@ if (!fs.existsSync(uploadsDir)) {
 }
 
 const gerarSalvarQRCode = async (patrimonio) => {
-    // Gera um link único para o QR Code, que será redirecionado para a geração do PDF
-    const qrCodeData = `http://10.0.2.2:3001/pdf/${patrimonio}`; // Link para o PDF
-    const qrCodePath = `uploads/${patrimonio}-qrcode.png`;
+    const qrCodeData = `http://localhost:3001/pdf/${patrimonio}`; // Link para o PDF do extintor
+    const qrCodePath = path.join(uploadsDir, `${patrimonio}-qrcode.png`);
 
-    await QRCode.toFile(qrCodePath, qrCodeData);  // Gera o QR Code com a URL para o PDF
-    return qrCodePath;
+    await QRCode.toFile(qrCodePath, qrCodeData);
+    console.log(`QR Code gerado e salvo em: ${qrCodePath}`);
+    return qrCodePath; // Retorna o caminho do arquivo
 };
 
-// Endpoint para registrar o extintor e gerar o QR Code
 app.post('/registrar_extintor', async (req, res) => {
     const {
         patrimonio,
         tipo_id,
-        capacidade_id ,
+        capacidade_id,
         codigo_fabricante,
         data_fabricacao,
         data_validade,
         ultima_recarga,
         proxima_inspecao,
-        status,
         linha_id,
-        id_localizacao,
-        observacoes,
+        estacao,
+        descricao_local,
+        observacoes_local,
+        observacoes, // Observação do extintor
+        status,
     } = req.body;
 
     try {
-        // Formatar datas
-        const dataFabricacao = moment(data_fabricacao, 'DD/MM/YYYY').format('YYYY-MM-DD');
-        const dataValidade = moment(data_validade, 'DD/MM/YYYY').format('YYYY-MM-DD');
-        const ultimaRecarga = moment(ultima_recarga, 'DD/MM/YYYY').format('YYYY-MM-DD');
-        const proximaInspecao = moment(proxima_inspecao, 'DD/MM/YYYY').format('YYYY-MM-DD');
+        // Primeiro, insira a localização na tabela localizacoes
+        const localizacaoQuery = `
+            INSERT INTO localizacoes (Linha_ID, Estacao, Descricao_Local, Observacoes)
+            VALUES (?, ?, ?, ?)
+        `;
+        const localizacaoParams = [linha_id, estacao, descricao_local, observacoes_local];
+        const [localizacaoResult] = await db.promise().query(localizacaoQuery, localizacaoParams);
 
-        // Gerar o QR Code
-        const qrCodePath = await gerarSalvarQRCode(patrimonio);
+        const id_localizacao = localizacaoResult.insertId; // Obter o ID da nova localização
 
-        // Inserir no banco de dados
+        // Agora, insira o extintor na tabela extintores
         const query = `
             INSERT INTO Extintores 
-            (Patrimonio, Tipo_ID, capacidade_id , Codigo_Fabricante, Data_Fabricacao, Data_Validade, Ultima_Recarga, Proxima_Inspecao, status_id, Linha_ID, ID_Localizacao, QR_Code, Observacoes) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (Patrimonio, Tipo_ID, Capacidade_ID, Codigo_Fabricante, Data_Fabricacao, Data_Validade, Ultima_Recarga, Proxima_Inspecao, ID_Localizacao, Linha_ID, Status_ID, Observacoes) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
-        db.query(query, [
-            patrimonio, tipo_id, capacidade_id , codigo_fabricante, dataFabricacao, dataValidade, ultimaRecarga, proximaInspecao, status, linha_id, id_localizacao, qrCodePath, observacoes,
-        ], (err) => {
-            if (err) {
-                console.error('Erro ao inserir no banco de dados:', err);
-                return res.status(500).json({ success: false, message: 'Erro ao registrar o extintor.' });
-            }
+        await db.promise().query(query, [
+            patrimonio, tipo_id, capacidade_id, codigo_fabricante,
+            moment(data_fabricacao, 'DD/MM/YYYY').format('YYYY-MM-DD'),
+            moment(data_validade, 'DD/MM/YYYY').format('YYYY-MM-DD'),
+            moment(ultima_recarga, 'DD/MM/YYYY').format('YYYY-MM-DD'),
+            moment(proxima_inspecao, 'DD/MM/YYYY').format('YYYY-MM-DD'),
+            id_localizacao, linha_id, status, observacoes // Observação do extintor
+        ]);
 
-            res.json({ success: true, qrCodeUrl: `http://10.0.2.2:3001/uploads/${patrimonio}-qrcode.png` });
-        });
+        // Gerar e salvar o QR Code
+        const qrCodePath = await gerarSalvarQRCode(patrimonio);
+
+        // Atualizar o caminho do QR Code no extintor
+        const qrCodeUrl = `${req.protocol}://${req.get('host')}/uploads/${patrimonio}-qrcode.png`;
+        await db.promise().query('UPDATE Extintores SET QR_Code = ? WHERE Patrimonio = ?', [qrCodeUrl, patrimonio]);
+
+        res.json({ success: true, message: 'Extintor registrado com sucesso!', qrCodeUrl: qrCodeUrl });    
     } catch (err) {
-        console.error('Erro ao processar registro:', err);
-        res.status(500).json({ success: false, error: 'Erro ao registrar o extintor.' });
+        console.error('Erro ao registrar extintor:', err);
+        res.status(500).json({ success: false, message: 'Erro ao registrar o extintor.' });
     }
 });
 
 // Endpoint para gerar o PDF
-app.get('/pdf/:patrimonio', (req, res) => {
+app.get('/pdf/:patrimonio', async (req, res) => {
     const patrimonio = req.params.patrimonio;
 
-    db.execute('SELECT * FROM extintores WHERE Patrimonio = ?', [patrimonio], async (err, results) => {
-        if (err || results.length === 0) {
+    try {
+        // Recuperar os dados do extintor
+        const [extintorResult] = await db.promise().query('SELECT * FROM Extintores WHERE Patrimonio = ?', [patrimonio]);
+        if (extintorResult.length === 0) {
             return res.status(404).send('Extintor não encontrado.');
         }
+        const data = extintorResult[0];
 
-        const data = results[0];
-
-        // Buscar o nome do Tipo
+        // Recuperar informações adicionais
         const [tipoResult] = await db.promise().query('SELECT tipo FROM tipos_extintores WHERE id = ?', [data.Tipo_ID]);
         const tipoNome = tipoResult.length > 0 ? tipoResult[0].tipo : 'Tipo não encontrado';
 
-        // Buscar o nome do Status
+        const [capacidadeResult] = await db.promise().query('SELECT descricao FROM capacidades WHERE id = ?', [data.Capacidade_ID]);
+        const capacidadeDescricao = capacidadeResult.length > 0 ? capacidadeResult[0].descricao : 'Capacidade não encontrada';
+
         const [statusResult] = await db.promise().query('SELECT nome FROM status_extintor WHERE id = ?', [data.status_id]);
         const statusNome = statusResult.length > 0 ? statusResult[0].nome : 'Status não encontrado';
 
-        // Buscar o nome da Linha
         const [linhaResult] = await db.promise().query('SELECT nome FROM linhas WHERE id = ?', [data.Linha_ID]);
         const linhaNome = linhaResult.length > 0 ? linhaResult[0].nome : 'Linha não encontrada';
 
-        // Buscar a Localização
-        const [localizacaoResult] = await db.promise().query('SELECT Area, Subarea, Local_Detalhado FROM localizacoes WHERE ID_Localizacao = ?', [data.ID_Localizacao]);
-        const localizacaoNome = localizacaoResult.length > 0 ? `${localizacaoResult[0].Area}, ${localizacaoResult[0].Subarea}, ${localizacaoResult[0].Local_Detalhado}` : 'Localização não encontrada';
+        const [localizacaoResult] = await db.promise().query('SELECT Estacao, Descricao_Local, Observacoes FROM localizacoes WHERE ID_Localizacao = ?', [data.ID_Localizacao]);
+        const localizacao = localizacaoResult.length > 0 ? localizacaoResult[0] : null;
 
-        // Formatar as datas usando Moment.js
+        const localizacaoNome = localizacao ? `${localizacao.Estacao}, ${localizacao.Descricao_Local}` : 'Localização não encontrada';
+
         const dataFabricacaoFormatada = moment(data.Data_Fabricacao).format('DD/MM/YYYY');
         const dataValidadeFormatada = moment(data.Data_Validade).format('DD/MM/YYYY');
         const ultimaRecargaFormatada = moment(data.Ultima_Recarga).format('DD/MM/YYYY');
         const proximaInspecaoFormatada = moment(data.Proxima_Inspecao).format('DD/MM/YYYY');
 
-        // Criar o PDF dinamicamente
+        // Criar o PDF
         const doc = new PDFDocument();
         res.setHeader('Content-Type', 'application/pdf');
         doc.pipe(res);
 
+        // Adicionando um título
+        doc.fontSize(20).text('Relatório do Extintor', { align: 'center' }).moveDown();
+        doc.moveTo(50, 50).lineTo(550, 50).stroke(); // Linha horizontal
+
+        // Adicionando as informações do extintor
         doc.fontSize(12)
             .text(`Patrimônio: ${data.Patrimonio}`)
-            .text(`Tipo: ${tipoNome}`) // Exibir o nome do tipo
-            .text(`Capacidade: ${data.Capacidade}`)
+            .text(`Tipo: ${tipoNome}`)
+            .text(`Capacidade: ${capacidadeDescricao}`)
             .text(`Código Fabricante: ${data.Codigo_Fabricante}`)
-            .text(`Data de Fabricação: ${dataFabricacaoFormatada}`) // Exibir a data formatada
-            .text(`Data de Validade: ${dataValidadeFormatada}`) // Exibir a data formatada
-            .text(`Última Recarga: ${ultimaRecargaFormatada}`) // Exibir a data formatada
-            .text(`Próxima Inspeção: ${proximaInspecaoFormatada}`) // Exibir a data formatada
-            .text(`Linha: ${linhaNome}`) // Exibir o nome da linha
-            .text(`Localização: ${localizacaoNome}`) // Exibir o nome da localização
-            .text(`Status: ${statusNome}`) // Exibir o nome do status
-            .text(`Observações: ${data.Observacoes}`);
+            .text(`Data de Fabricação: ${dataFabricacaoFormatada}`)
+            .text(`Data de Validade: ${dataValidadeFormatada}`)
+            .text(`Última Recarga: ${ultimaRecargaFormatada}`)
+            .text(`Próxima Inspeção: ${proximaInspecaoFormatada}`)
+            .text(`Linha: ${linhaNome}`)
+            .text(`Localização: ${localizacaoNome}`)
+            .text(`Status: ${statusNome}`)
+            .text(`Observações: ${data.Observacoes}`)
+            .moveDown();
+
+        // Adicionando o histórico de manutenção
+        doc.fontSize(14).text('Histórico de Manutenção:', { underline: true }).moveDown();
+        const [historicoResult] = await db.promise().query('SELECT * FROM historico_manutencao WHERE ID_Extintor = ?', [data.Patrimonio]);
+        if (historicoResult.length > 0) {
+            historicoResult.forEach(h => {
+                doc.text(`Data: ${moment(h.Data_Manutencao).format('DD/MM/YYYY')}, Descrição: ${h.Descricao}, Responsável: ${h.Responsavel_Manutencao}, Observações: ${h.Observacoes}`);
+            });
+        } else {
+            doc.text('Nenhum histórico encontrado.');
+        }
 
         doc.end();
-    });
+    } catch (error) {
+        console.error('Erro ao gerar PDF:', error);
+        res.status(500).send('Erro ao gerar o PDF.');
+    }
 });
 
 // Servir arquivos estáticos
 app.use('/uploads', express.static(uploadsDir));
 
-const atualizarStatusExtintor = async (idExtintor) => {
-    try {
-        // Recupera o extintor com base no ID
-        const query = 'SELECT * FROM Extintores WHERE Patrimonio = ?';
-        db.query(query, [idExtintor], (err, results) => {
-            if (err) {
-                console.error('Erro ao buscar extintor:', err);
-                return;
-            }
-
-            const extintor = results[0];
-            if (!extintor) {
-                console.log('Extintor não encontrado');
-                return;
-            }
-
-            let novoStatus;
-            const dataAtual = new Date();
-
-            // Verifica se o extintor está vencido
-            if (new Date(extintor.Data_Validade) < dataAtual) {
-                novoStatus = 'Vencido';
-            }
-            // Verifica se o extintor foi violado
-            else if (extintor.Status === 'violado') {
-                novoStatus = 'Violado';
-            }
-            // Caso contrário, considera o status como Ativo
-            else {
-                novoStatus = 'Ativo';
-            }
-
-            // Recupera o id do status a partir do nome
-            const queryStatus = 'SELECT id FROM Status_Extintor WHERE nome = ?';
-            db.query(queryStatus, [novoStatus], (err, statusResult) => {
-                if (err) {
-                    console.error('Erro ao buscar status:', err);
-                    return;
-                }
-
-                if (statusResult.length === 0) {
-                    console.log('Status não encontrado');
-                    return;
-                }
-
-                const statusId = statusResult[0].id;
-
-                // Atualiza o status do extintor no banco
-                const updateQuery = 'UPDATE Extintores SET status_id = ? WHERE Patrimonio = ?';
-                db.query(updateQuery, [statusId, idExtintor], (err, updateResult) => {
-                    if (err) {
-                        console.error('Erro ao atualizar o status do extintor:', err);
-                        return;
-                    }
-                    console.log('Status do extintor atualizado para:', novoStatus);
-                });
-            });
-        });
-    } catch (err) {
-        console.error('Erro ao atualizar o status:', err);
-    }
-};
-
-app.get('/extintores', (req, res) => {
-    const query = 'SELECT Patrimonio, Tipo_ID FROM Extintores';
-    db.query(query, (err, results) => {
-        if (err) {
-            console.error('Erro ao buscar extintores: ' + err.stack);
-            return res.status(500).json({ success: false, message: 'Erro ao buscar extintores' });
-        }
-
-        console.log('Resultados encontrados:', results); // Verifique se está retornando a capacidade
-        res.status(200).json({ success: true, extintores: results });
-    });
-});
-
-
 app.post('/salvar_manutencao', (req, res) => {
     const {
-        patrimonio,          // Usando Patrimonio
+        patrimonio,
         descricao,
         responsavel,
         observacoes,
@@ -243,68 +197,52 @@ app.post('/salvar_manutencao', (req, res) => {
         ultima_recarga,
         proxima_inspecao,
         data_vencimento,
-        revisar_status // Novo campo para revisão de status
+        revisar_status
     } = req.body;
 
-    // Verificação para garantir que todos os campos obrigatórios estão presentes
-    if (
-        !patrimonio ||
-        !descricao ||
-        !responsavel ||
-        !data_manutencao ||
-        !ultima_recarga ||
-        !proxima_inspecao ||
-        !data_vencimento
-    ) {
+    if (!patrimonio || !descricao || !responsavel || !data_manutencao || !ultima_recarga || !proxima_inspecao || !data_vencimento) {
         return res.status(400).json({ success: false, message: 'Todos os campos são obrigatórios' });
     }
 
-    // 1. Inserir a manutenção no histórico de manutenção
     const queryManutencao = `
         INSERT INTO Historico_Manutencao (ID_Extintor, Data_Manutencao, Descricao, Responsavel_Manutencao, Observacoes)
         VALUES (?, ?, ?, ?, ?)
     `;
 
-    // Executar a consulta para salvar a manutenção
     db.query(queryManutencao, [
-        patrimonio,                // Referência ao campo Patrimonio como ID_Extintor
+        patrimonio,
         data_manutencao,
         descricao,
         responsavel,
-        observacoes || '',  // Observações podem ser nulas
-    ], (err, result) => {
+        observacoes || '',
+    ], (err) => {
         if (err) {
             console.error('Erro ao salvar manutenção: ' + err.stack);
             return res.status(500).json({ success: false, message: 'Erro ao salvar manutenção' });
         }
 
-        // 2. Agora, atualizamos os dados na tabela Extintores com as novas informações
         const queryExtintores = `
             UPDATE Extintores
             SET Ultima_Recarga = ?, Proxima_Inspecao = ?, Data_Validade = ?
             WHERE Patrimonio = ?
         `;
 
-        // Atualizar as informações do extintor
         db.query(queryExtintores, [
             ultima_recarga,
             proxima_inspecao,
             data_vencimento,
-            patrimonio    // Usando Patrimonio aqui para atualizar o extintor correto
-        ], (err2, result2) => {
+            patrimonio
+        ], (err2) => {
             if (err2) {
                 console.error('Erro ao atualizar extintores: ' + err2.stack);
                 return res.status(500).json({ success: false, message: 'Erro ao atualizar extintores' });
             }
 
-            // 3. Atualizar o status do extintor, se necessário
             if (revisar_status) {
-                // Certifique-se de que o status "Ativo" existe na tabela Status_Extintor
                 const queryStatus = `
                     SELECT id FROM Status_Extintor WHERE nome = 'Ativo'
                 `;
 
-                // Obter o ID do status 'Ativo'
                 db.query(queryStatus, [], (err3, result3) => {
                     if (err3) {
                         console.error('Erro ao buscar status: ' + err3.stack);
@@ -314,47 +252,68 @@ app.post('/salvar_manutencao', (req, res) => {
                     if (result3.length > 0) {
                         const status_id = result3[0].id;
 
-                        // Atualizar o status do extintor com o ID correto
                         const queryUpdateStatus = `
                             UPDATE Extintores
                             SET status_id = ?
                             WHERE Patrimonio = ?
-                        `;
+                                `;
 
-                        // Atualiza o status do extintor para 'Ativo'
-                        db.query(queryUpdateStatus, [status_id, patrimonio], (err4, result4) => {
+                        db.query(queryUpdateStatus, [status_id, patrimonio], (err4) => {
                             if (err4) {
                                 console.error('Erro ao atualizar status do extintor: ' + err4.stack);
                                 return res.status(500).json({ success: false, message: 'Erro ao atualizar status' });
                             }
 
-                            // Se a manutenção, atualização do extintor e status forem bem-sucedidos
                             res.status(200).json({ success: true, message: 'Manutenção salva, dados atualizados e status alterado com sucesso!' });
                         });
                     } else {
-                        // Se o status 'Ativo' não foi encontrado
                         console.error('Status "Ativo" não encontrado na tabela Status_Extintor');
                         return res.status(500).json({ success: false, message: 'Status "Ativo" não encontrado' });
                     }
                 });
             } else {
-                // Se não for necessário revisar o status, apenas finalize a operação
                 res.status(200).json({ success: true, message: 'Manutenção salva e dados atualizados com sucesso!' });
             }
         });
     });
 });
 
-app.get('/capacidades', (req, res) => {
-    const query = 'SELECT id, descricao FROM capacidades';  // Alterando para pegar tanto o 'id' quanto a 'descricao'
-    db.query(query, (err, results) => {
+app.post('/registrar_problema', (req, res) => {
+    const { patrimonio, Problema, local, observacoes } = req.body;
+
+    if (!patrimonio || !Problema || !local) {
+        return res.status(400).json({ success: false, message: 'Todos os campos são obrigatórios' });
+    }
+
+    // Verifica se já existe um problema registrado para o patrimônio
+    const checkQuery = `
+        SELECT COUNT(*) AS count FROM Problemas_Extintores WHERE ID_Extintor = ?
+    `;
+
+    db.query(checkQuery, [patrimonio], (err, results) => {
         if (err) {
-            console.error('Erro ao consultar capacidades:', err);
-            return res.status(500).json({ success: false, message: 'Erro ao buscar capacidades' });
+            console.error('Erro ao verificar problemas registrados:', err);
+            return res.status(500).json({ success: false, message: 'Erro ao verificar problemas registrados' });
         }
 
-        // Enviando os dados como esperado pelo frontend
-        res.json({ success: true, data: results });
+        if (results[0].count > 0) {
+            return res.status(400).json({ success: false, message: 'Já existe um problema registrado para este patrimônio.' });
+        }
+
+        // Se não houver problemas registrados, insira o novo problema
+        const query = `
+            INSERT INTO Problemas_Extintores (ID_Extintor, Problema, Local, Observacoes)
+            VALUES (?, ?, ?, ?)
+        `;
+
+        db.query(query, [patrimonio, Problema, local, observacoes], (err) => {
+            if (err) {
+                console.error('Erro ao registrar problema:', err);
+                return res.status(500).json({ success: false, message: 'Erro ao registrar problema' });
+            }
+
+            res.status(200).json({ success: true, message: 'Problema registrado com sucesso!' });
+        });
     });
 });
 
@@ -369,7 +328,7 @@ app.post('/login', (req, res) => {
         SELECT usuarios.id, usuarios.nome, cargos.nome AS cargo
         FROM usuarios
         JOIN cargos ON usuarios.cargo_id = cargos.id
-        WHERE usuarios.email = ? AND usuarios.senha = ?`;
+        WHERE usuarios.email = ? AND usuarios.senha = ? `;
 
     db.query(query, [email, password], (err, results) => {
         if (err) {
@@ -381,7 +340,6 @@ app.post('/login', (req, res) => {
             return res.status(401).json({ success: false, message: 'Email ou senha incorretos' });
         }
 
-        // Retornar o nome do usuário e cargo
         const usuario = results[0];
         return res.json({ success: true, nome: usuario.nome, cargo: usuario.cargo });
     });
@@ -394,13 +352,11 @@ app.get('/usuario', (req, res) => {
         return res.status(400).json({ success: false, message: 'Email é obrigatório' });
     }
 
-    console.log(`Procurando usuário com email: ${email}`);  // Log para depuração
-
     const query = `
         SELECT usuarios.id, usuarios.nome, usuarios.matricula, cargos.nome AS cargo
         FROM usuarios
         JOIN cargos ON usuarios.cargo_id = cargos.id
-        WHERE usuarios.email = ?`;
+        WHERE usuarios.email = ? `;
 
     db.query(query, [email], (err, results) => {
         if (err) {
@@ -409,13 +365,10 @@ app.get('/usuario', (req, res) => {
         }
 
         if (results.length === 0) {
-            console.log('Usuário não encontrado');  // Log para depuração
             return res.status(404).json({ success: false, message: 'Usuário não encontrado' });
         }
 
         const usuario = results[0];
-        console.log('Usuário encontrado:', usuario);  // Log para depuração
-
         res.json({
             success: true,
             nome: usuario.nome,
@@ -423,6 +376,94 @@ app.get('/usuario', (req, res) => {
             cargo: usuario.cargo,
             id: usuario.id,
         });
+    });
+});
+
+app.get('/patrimonio', (req, res) => {
+    const query = 'SELECT patrimonio FROM extintores';
+    db.query(query, (err, results) => {
+        if (err) {
+            console.error('Erro na consulta SQL:', err);
+            res.status(500).json({ success: false, message: 'Erro na consulta ao banco de dados' });
+            return;
+        }
+
+        const patrimônios = results.map(row => row.patrimonio);
+        res.json({
+            success: true,
+            patrimônios: patrimônios,
+        });
+    });
+});
+
+app.get('/extintor/:patrimonio', (req, res) => {
+    const patrimonio = req.params.patrimonio;
+    const qrCodePath = `uploads/${patrimonio}-qrcode.png`; // Corrija o espaço extra
+    const qrCodeUrl = `${req.protocol}://${req.get('host')}/${qrCodePath}`;
+
+    const query = `
+        SELECT 
+            e.Patrimonio, 
+            e.Codigo_Fabricante, 
+            e.Data_Fabricacao, 
+            e.Data_Validade, 
+            e.Ultima_Recarga, 
+            e.Proxima_Inspecao, 
+            e.QR_Code, 
+            e.Observacoes AS Observacoes_Extintor,
+            s.nome AS Status, 
+            t.tipo AS Tipo, 
+            c.descricao AS Capacidade, 
+            l.Area AS Localizacao_Area, 
+            l.Subarea AS Localizacao_Subarea, 
+            l.Local_Detalhado AS Localizacao_Detalhada, 
+            l.Observacoes AS Observacoes_Local,
+            ln.nome AS Linha_Nome, 
+            ln.codigo AS Linha_Codigo, 
+            ln.descricao AS Linha_Descricao,
+            hm.ID_Manutencao, 
+            hm.Data_Manutencao, 
+            hm.Descricao AS Manutencao_Descricao, 
+            hm.Responsavel_Manutencao, 
+            hm.Observacoes AS Manutencao_Observacoes
+        FROM extintores e
+        JOIN status_extintor s ON e.status_id = s.id
+        JOIN tipos_extintores t ON e.Tipo_ID = t.id
+        JOIN capacidades c ON e.Capacidade_ID = c.id
+        JOIN localizacoes l ON e.ID_Localizacao = l.ID_Localizacao
+        LEFT JOIN linhas ln ON e.Linha_ID = ln.id
+        LEFT JOIN historico_manutencao hm ON e.Patrimonio = hm.ID_Extintor
+        WHERE e.Patrimonio = ?
+    `;
+    db.query(query, [patrimonio], (err, results) => {
+        if (err) {
+            console.error('Erro ao buscar extintor:', err);
+            return res.status(500).json({ success: false, message: 'Erro ao buscar extintor' });
+        }
+
+        if (results.length === 0) {
+            return res.status(404).json({ success: false, message: 'Extintor não encontrado' });
+        }
+
+        const extintor = results[0];
+
+        // Adiciona a URL do QR Code
+        extintor.QR_Code = qrCodeUrl; // Assegure-se de que a URL está sendo atribuída corretamente
+        res.status(200).json({ success: true, extintor });
+    });
+});
+
+//======================= ENDPOINTS PARA CONSULTA ====================================
+
+app.get('/extintores', (req, res) => {
+    const query = 'SELECT Patrimonio, Tipo_ID FROM Extintores';
+    db.query(query, (err, results) => {
+        if (err) {
+            console.error('Erro ao buscar extintores: ' + err.stack);
+            return res.status(500).json({ success: false, message: 'Erro ao buscar extintores' });
+        }
+
+        res.status(200).json({ success: true, extintores: results });
     });
 });
 
@@ -436,6 +477,29 @@ app.get('/status', (req, res) => {
         }
 
         res.json({ success: true, data: results });
+    });
+});
+
+app.get('/problemas', (req, res) => {
+    const query = `
+        SELECT 
+            p.ID_Extintor AS patrimonio, 
+            p.Problema, 
+            p.Local, 
+            p.Observacoes,
+            e.status_id,
+            s.nome AS Status
+        FROM Problemas_Extintores p
+        JOIN extintores e ON p.ID_Extintor = e.Patrimonio
+        LEFT JOIN status_extintor s ON e.status_id = s.id
+    `;
+
+    db.query(query, (err, results) => {
+        if (err) {
+            console.error('Erro ao buscar problemas:', err);
+            return res.status(500).json({ success: false, message: 'Erro ao buscar problemas' });
+        }
+        res.status(200).json({ success: true, problemas: results });
     });
 });
 
@@ -459,15 +523,14 @@ app.get('/localizacoes', (req, res) => {
     }
 
     const query = `
-  SELECT 
-    ID_Localizacao AS id, 
-    Area AS nome, 
-    Subarea AS subarea, 
-    Local_Detalhado AS local_detalhado 
-  FROM Localizacoes 
-  WHERE Linha_ID = ?
+    SELECT 
+        ID_Localizacao AS id,
+        Estacao AS nome,           -- Use 'Estacao' em vez de 'Area'
+        Descricao_Local AS subarea, -- Use 'Descricao_Local' em vez de 'Subarea'
+        Observacoes AS local_detalhado -- Use 'Observacoes' em vez de 'Local_Detalhado'
+    FROM localizacoes
+    WHERE Linha_ID = ?
 `;
-
     db.query(query, [linhaId], (err, results) => {
         if (err) {
             console.error('Erro ao consultar localizações:', err);
@@ -477,7 +540,6 @@ app.get('/localizacoes', (req, res) => {
         res.json({ success: true, data: results });
     });
 });
-
 
 app.get('/linhas', (req, res) => {
     const query = 'SELECT * FROM Linhas';
@@ -491,77 +553,124 @@ app.get('/linhas', (req, res) => {
     });
 });
 
-app.get('/patrimonio', (req, res) => {
-    const query = 'SELECT patrimonio FROM extintores';
+app.get('/capacidades', (req, res) => {
+    const query = 'SELECT id, descricao FROM capacidades';
     db.query(query, (err, results) => {
         if (err) {
-            console.error('Erro na consulta SQL:', err);
-            res.status(500).json({ success: false, message: 'Erro na consulta ao banco de dados' });
-            return;
+            console.error('Erro ao consultar capacidades:', err);
+            return res.status(500).json({ success: false, message: 'Erro ao buscar capacidades' });
         }
 
-        console.log('Patrimônios encontrados:', results);  // Adicione este log
-        const patrimônios = results.map(row => row.patrimonio);
-        res.json({
-            success: true,
-            patrimônios: patrimônios,
-        });
+        res.json({ success: true, data: results });
     });
 });
 
-app.get('/extintor/:patrimonio', (req, res) => {
+// Endpoint para buscar a localização do extintor
+app.get('/extintor/localizacao/:patrimonio', (req, res) => {
     const patrimonio = req.params.patrimonio;
-    console.log(`Buscando extintor com patrimônio: ${patrimonio}`);  // Log para depuração
+
     const query = `
         SELECT 
-            e.Patrimonio, 
-            e.Capacidade, 
-            e.Codigo_Fabricante, 
-            e.Data_Fabricacao, 
-            e.Data_Validade, 
-            e.Ultima_Recarga, 
-            e.Proxima_Inspecao, 
-            e.QR_Code, 
-            e.Observacoes AS Observacoes_Extintor,
-            s.nome AS Status, 
-            t.tipo AS Tipo, 
-            l.Area AS Localizacao_Area, 
-            l.Subarea AS Localizacao_Subarea, 
-            l.Local_Detalhado AS Localizacao_Detalhada, 
-            l.Observacoes AS Observacoes_Local,
-            ln.nome AS Linha_Nome, 
-            ln.codigo AS Linha_Codigo, 
-            ln.descricao AS Linha_Descricao,
-            hm.ID_Manutencao, 
-            hm.Data_Manutencao, 
-            hm.Descricao AS Manutencao_Descricao, 
-            hm.Responsavel_Manutencao, 
-            hm.Observacoes AS Manutencao_Observacoes
-        FROM Extintores e
-        JOIN Status_Extintor s ON e.status_id = s.id
-        JOIN Tipos_Extintores t ON e.Tipo_ID = t.id
-        JOIN Localizacoes l ON e.ID_Localizacao = l.ID_Localizacao
-        LEFT JOIN Linhas ln ON e.Linha_ID = ln.id
-        LEFT JOIN Historico_Manutencao hm ON e.Patrimonio = hm.ID_Extintor
+            l.Area,
+            l.Subarea,
+            l.Local_Detalhado,
+            l.Observacoes
+        FROM extintores e
+        JOIN localizacoes l ON e.ID_Localizacao = l.ID_Localizacao
         WHERE e.Patrimonio = ?
     `;
+
     db.query(query, [patrimonio], (err, results) => {
         if (err) {
-            console.error('Erro ao buscar extintor:', err);
-            return res.status(500).json({ success: false, message: 'Erro ao buscar extintor' });
+            console.error('Erro ao buscar localização do extintor:', err);
+            return res.status(500).json({ success: false, message: 'Erro ao buscar localização do extintor' });
         }
 
         if (results.length === 0) {
             return res.status(404).json({ success: false, message: 'Extintor não encontrado' });
         }
 
-        console.log('Extintor encontrado:', results[0]);  // Log para ver o retorno
-        res.status(200).json({ success: true, extintor: results[0] });
+        const localizacao = results[0];
+        res.status(200).json({ success: true, localizacao });
     });
 });
 
+const verificarValidadeExtintores = async () => {
+    const hoje = moment();
+    const diasParaAviso = 7; // Número de dias antes da validade para enviar a notificação
+    const dataLimite = hoje.add(diasParaAviso, 'days').format('YYYY-MM-DD');
+
+    const query = `
+        SELECT Patrimonio, DATEDIFF(Data_Validade, ?) AS DiasRestantes, TokenDispositivo
+        FROM Extintores
+        WHERE Data_Validade BETWEEN ? AND ?
+    `;
+
+    try {
+        const [resultados] = await db.promise().query(query, [hoje.format('YYYY-MM-DD'), hoje.format('YYYY-MM-DD'), dataLimite]);
+
+        for (const extintor of resultados) {
+            await enviarNotificacao(extintor.TokenDispositivo, extintor.Patrimonio, extintor.DiasRestantes);
+        }
+    } catch (error) {
+        console.error('Erro ao verificar validade dos extintores:', error);
+    }
+};
+
+async function atualizarStatusExtintores() {
+    const hoje = moment().format('YYYY-MM-DD'); // Data atual formatada
+
+    const query = `
+        UPDATE Extintores
+        SET status_id = (SELECT id FROM Status_Extintor WHERE nome = 'Vencido')
+        WHERE Data_Validade <= ?
+    `;
+
+    try {
+        await db.promise().query(query, [hoje]);
+        console.log('Status dos extintores atualizados para vencido, se aplicável.');
+    } catch (error) {
+        console.error('Erro ao atualizar status dos extintores:', error);
+    }
+}
+
+app.put('/atualizar_status_extintor', (req, res) => {
+    const { patrimonio, status } = req.body;
+
+    if (!patrimonio || !status) {
+        return res.status(400).json({ success: false, message: 'Patrimônio e status são obrigatórios' });
+    }
+
+    const query = `
+        UPDATE extintores 
+        SET status_id = (SELECT id FROM status_extintor WHERE nome = ?) 
+        WHERE patrimonio = ?
+    `;
+
+    db.query(query, [status, patrimonio], (err) => {
+        if (err) {
+            console.error('Erro ao atualizar status do extintor:', err);
+            return res.status(500).json({ success: false, message: 'Erro ao atualizar status do extintor' });
+        }
+
+        res.status(200).json({ success: true, message: 'Status do extintor atualizado com sucesso!' });
+    });
+});
 
 const PORT = 3001;
-app.listen(PORT, '0.0.0.0', () => {
+app.listen(PORT, '0.0.0.0', async () => {
     console.log(`Servidor rodando na porta ${PORT}`);
+    await atualizarStatusExtintores(); // Atualiza o status ao iniciar o servidor
 });
+
+// Agendar a verificação diária de status
+const cron = require('node-cron');
+cron.schedule('0 0 * * *', async () => {
+    await atualizarStatusExtintores();
+    console.log('Verificação diária de status de extintores realizada.');
+});
+
+// cron.schedule('0 8 * * *', async () => {
+//     await verificarValidadeExtintores();
+//     console.log('Verificação diária de validade de extintores realizada.');
+// });

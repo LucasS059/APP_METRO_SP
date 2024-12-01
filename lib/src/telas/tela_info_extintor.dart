@@ -10,7 +10,7 @@ class TelaInfoExtintor extends StatelessWidget {
 
   Future<Map<String, dynamic>> fetchExtintorInfo() async {
     final response = await http.get(
-      Uri.parse('http://10.0.2.2:3001/extintor/$patrimonio'),
+      Uri.parse('http://localhost:3001/extintor/$patrimonio'),
     );
 
     if (response.statusCode == 200) {

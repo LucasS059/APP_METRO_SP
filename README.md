@@ -1,5 +1,3 @@
-banco de dados atualizado 
-
 -- Criação do banco de dados
 CREATE DATABASE metro_sp;
 USE metro_sp;
@@ -46,11 +44,35 @@ CREATE TABLE localizacoes (
     FOREIGN KEY (Linha_ID) REFERENCES linhas(id)
 );
 
+CREATE TABLE capacidades (
+    id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    descricao VARCHAR(10) NOT NULL UNIQUE,
+    PRIMARY KEY (id)
+);
+
+-- Inserindo os valores de capacidades
+INSERT INTO capacidades (descricao)
+VALUES 
+    ('11/2'),
+    ('21/2'),
+    ('1Kg'),
+    ('2Kg'),
+    ('4Kg'),
+    ('6Kg'),
+    ('8Kg'),
+    ('10Kg'),
+    ('12Kg'),
+    ('20Kg'),
+    ('25Kg'),
+    ('45Kg'),
+    ('50Kg'),
+    ('10L');
+
 -- Tabela de extintores
 CREATE TABLE extintores (
     Patrimonio INT NOT NULL,
     Tipo_ID INT UNSIGNED NOT NULL,
-    Capacidade VARCHAR(10),
+    Capacidade_ID INT UNSIGNED, -- Referência à tabela de capacidades
     Codigo_Fabricante VARCHAR(50),
     Data_Fabricacao DATE,
     Data_Validade DATE,
@@ -63,11 +85,11 @@ CREATE TABLE extintores (
     status_id INT,
     PRIMARY KEY (Patrimonio),
     FOREIGN KEY (Tipo_ID) REFERENCES tipos_extintores(id),
+    FOREIGN KEY (Capacidade_ID) REFERENCES capacidades(id),
     FOREIGN KEY (ID_Localizacao) REFERENCES localizacoes(ID_Localizacao),
     FOREIGN KEY (Linha_ID) REFERENCES linhas(id),
     FOREIGN KEY (status_id) REFERENCES status_extintor(id)
 );
-
 -- Tabela de histórico de manutenção
 CREATE TABLE historico_manutencao (
     ID_Manutencao INT NOT NULL AUTO_INCREMENT,
@@ -135,11 +157,10 @@ INSERT INTO localizacoes (Linha_ID, Area, Subarea, Local_Detalhado, Observacoes)
 (1, 'Centro', 'Liberdade', 'Estação Liberdade', 'Observação da estação Liberdade'),
 (1, 'Centro', 'Sé', 'Estação Sé', 'Observação da estação Sé');
 
--- Inserção de localizações (Linha 2 - Verde)
 INSERT INTO localizacoes (Linha_ID, Area, Subarea, Local_Detalhado, Observacoes) VALUES
 (2, 'Zona Leste', 'Vila Prudente', 'Estação Vila Prudente', 'Observação da estação Vila Prudente'),
-(2, 'Centro', 'Santos-Imigrantes', 'Estação Santos-Imigrantes', 'Observação da estação Santos-Imigrantes'),
-(2, 'Centro', 'Alto do Ipiranga', 'Estação Alto do Ipiranga', 'Observação da estação Alto do Ipiranga');
+(2, 'Zona Sul', 'Santos-Imigrantes', 'Estação Santos-Imigrantes', 'Observação da estação Santos-Imigrantes'),
+(2, 'Zona Sul', 'Alto do Ipiranga', 'Estação Alto do Ipiranga', 'Observação da estação Alto do Ipiranga');
 
 INSERT INTO localizacoes (Linha_ID, Area, Subarea, Local_Detalhado, Observacoes) VALUES
 (3, 'Zona Leste', 'Tatuapé', 'Estação Tatuapé', 'Observação da estação Tatuapé'),
@@ -173,19 +194,34 @@ INSERT INTO localizacoes (Linha_ID, Area, Subarea, Local_Detalhado, Observacoes)
 (6, 'Zona Leste', 'São Miguel Paulista', 'Estação São Miguel Paulista', 'Observação da estação São Miguel Paulista'),
 (6, 'Zona Oeste', 'Barra Funda', 'Estação Barra Funda', 'Observação da estação Barra Funda');
 
--- Inserção de extintores
-INSERT INTO extintores (Patrimonio, Tipo_ID, Capacidade, Codigo_Fabricante, Data_Fabricacao, Data_Validade, Ultima_Recarga, Proxima_Inspecao, ID_Localizacao, QR_Code, Observacoes, Linha_ID, status_id) VALUES
-(10001, 1, '5kg', 'FAB001', '2020-01-10', '2025-01-10', '2023-01-10', '2024-01-10', 1, 'QR10001', 'Extintor Pó Químico na Estação Jabaquara', 1, 1),
-(10002, 2, '10L', 'FAB002', '2021-05-12', '2026-05-12', '2023-05-12', '2024-05-12', 2, 'QR10002', 'Extintor Água na Estação Vila Prudente', 2, 2),
-(10003, 3, '2kg', 'FAB003', '2022-02-25', '2027-02-25', '2023-02-25', '2024-02-25', 3, 'QR10003', 'Extintor CO2 na Estação Sé', 3, 3),
-(10004, 4, '6L', 'FAB004', '2020-08-05', '2025-08-05', '2023-08-05', '2024-08-05', 4, 'QR10004', 'Extintor Espuma na Estação Faria Lima', 4, 4);
+-- Primeiro INSERT
+INSERT INTO extintores (
+    Patrimonio, Tipo_ID, Capacidade_ID, Codigo_Fabricante, Data_Fabricacao, 
+    Data_Validade, Ultima_Recarga, Proxima_Inspecao, ID_Localizacao, QR_Code, 
+    Observacoes, Linha_ID, status_id
+) VALUES (
+    1001, 1, 3, 'FAB12345', '2023-05-15', 
+    '2028-05-15', '2023-10-10', '2024-01-10', 2, 'QR1001ABC', 
+    'Extintor próximo à entrada principal', 1, 1
+);
 
--- Inserção de histórico de manutenção
+-- Segundo INSERT
+INSERT INTO extintores (
+    Patrimonio, Tipo_ID, Capacidade_ID, Codigo_Fabricante, Data_Fabricacao, 
+    Data_Validade, Ultima_Recarga, Proxima_Inspecao, ID_Localizacao, QR_Code, 
+    Observacoes, Linha_ID, status_id
+) VALUES (
+    1002, 2, 2, 'FAB67890', '2022-03-20', 
+    '2027-03-20', '2023-06-15', '2024-06-15', 5, 'QR1002DEF', 
+    'Extintor localizado no corredor do segundo andar', 3, 2
+);
+
+-- Inserção corrigida no histórico de manutenção
 INSERT INTO historico_manutencao (ID_Extintor, Data_Manutencao, Descricao, Responsavel_Manutencao, Observacoes) VALUES
-(10001, '2023-06-15', 'Recarga realizada e inspeção visual', 'Carlos Silva', 'Revisado em todas as partes, sem problemas'),
-(10002, '2023-06-16', 'Troca de válvula e recarga', 'Ana Costa', 'Valvulas trocadas, recarga completa'),
-(10003, '2023-07-05', 'Verificação de pressão e recarga', 'Roberto Santos', 'Feito teste de pressão, aprovado'),
-(10004, '2023-07-10', 'Inspeção de válvula', 'Juliana Oliveira', 'Inspeção completa sem defeitos');
+(1001, '2023-06-15', 'Recarga realizada e inspeção visual', 'Carlos Silva', 'Revisado em todas as partes, sem problemas'),
+(1002, '2023-06-16', 'Troca de válvula e recarga', 'Ana Costa', 'Válvulas trocadas, recarga completa'),
+(1001, '2023-07-05', 'Verificação de pressão e recarga', 'Roberto Santos', 'Feito teste de pressão, aprovado'),
+(1002, '2023-07-10', 'Inspeção de válvula', 'Juliana Oliveira', 'Inspeção completa sem defeitos');
 
 -- Inserção de usuários
 INSERT INTO usuarios (nome, email, senha, matricula, cargo_id) VALUES 

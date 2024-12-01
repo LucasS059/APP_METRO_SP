@@ -4,7 +4,6 @@ import 'dart:convert';
 import 'package:mobilegestaoextintores/src/telas/TelaPrincipal.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-
 class TelaLogin extends StatefulWidget {
   const TelaLogin({super.key});
 
@@ -235,46 +234,97 @@ class _TelaLoginState extends State<TelaLogin> {
   }
 
   Future<void> _login(BuildContext context) async {
-    final response = await http.post(
-      Uri.parse('http://10.0.2.2:3001/login'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'email': _emailController.text,
-        'password': _passwordController.text,
-      }),
-    );
+    try {
+      final response = await http.post(
+        Uri.parse('http://localhost:3001/login'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'email': _emailController.text,
+          'password': _passwordController.text,
+        }),
+      );
 
-    print('Resposta da API: ${response.body}');
-    print('Código de status: ${response.statusCode}');
+      print('Resposta da API: ${response.body}');
+      print('Código de status: ${response.statusCode}');
 
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
 
-      if (data['success'] == true) {
-        final prefs = await SharedPreferences.getInstance();
-        prefs.setString('usuario_email', _emailController.text);
-        prefs.setBool('usuario_logado', true);
+        if (data['success'] == true) {
+          final prefs = await SharedPreferences.getInstance();
+          prefs.setString('usuario_email', _emailController.text);
+          prefs.setBool('usuario_logado', true);
 
-        // Salva o nome do usuário
-        prefs.setString('usuario_nome', data['nome']);
+          // Salva o nome do usuário
+          prefs.setString('usuario_nome', data['nome']);
 
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const TelaPrincipal(),
-          ),
-        );
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const TelaPrincipal(),
+            ),
+          );
+        } else {
+          print('Erro no servidor: ${data['message']}');
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Erro no login: ${data['message']}')),
+          );
+        }
       } else {
-        print('Erro no servidor: ${data['message']}');
+        print('Erro de conexão: ${response.statusCode}');
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erro no login: ${data['message']}')),
+          SnackBar(content: Text('Erro de conexão com o servidor')),
         );
       }
-    } else {
-      print('Erro de conexão: ${response.statusCode}');
+    } catch (e) {
+      print('Erro ao tentar realizar login: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro de conexão com o servidor')),
+        SnackBar(content: Text('Erro inesperado ao fazer login')),
       );
     }
   }
+
+  // Future<void> _login(BuildContext context) async {
+  //   final response = await http.post(
+  //     Uri.parse('http://localhost:3001/login'),
+  //     headers: {'Content-Type': 'application/json'},
+  //     body: jsonEncode({
+  //       'email': _emailController.text,
+  //       'password': _passwordController.text,
+  //     }),
+  //   );
+
+  //   print('Resposta da API: ${response.body}');
+  //   print('Código de status: ${response.statusCode}');
+
+  //   if (response.statusCode == 200) {
+  //     final data = jsonDecode(response.body);
+
+  //     if (data['success'] == true) {
+  //       final prefs = await SharedPreferences.getInstance();
+  //       prefs.setString('usuario_email', _emailController.text);
+  //       prefs.setBool('usuario_logado', true);
+
+  //       // Salva o nome do usuário
+  //       prefs.setString('usuario_nome', data['nome']);
+
+  //       Navigator.pushReplacement(
+  //         context,
+  //         MaterialPageRoute(
+  //           builder: (context) => const TelaPrincipal(),
+  //         ),
+  //       );
+  //     } else {
+  //       print('Erro no servidor: ${data['message']}');
+  //       ScaffoldMessenger.of(context).showSnackBar(
+  //         SnackBar(content: Text('Erro no login: ${data['message']}')),
+  //       );
+  //     }
+  //   } else {
+  //     print('Erro de conexão: ${response.statusCode}');
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       SnackBar(content: Text('Erro de conexão com o servidor')),
+  //     );
+  //   }
+  // }
 }

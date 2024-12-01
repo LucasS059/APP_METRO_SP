@@ -17,7 +17,7 @@ class _ManutencaoExtintorPageState extends State<ManutencaoExtintorPage> {
   DateTime? proximaInspecao;
   DateTime? vencimento;
   int? idExtintor;
-  bool revisarStatus = false; // Controle de revisão de status
+  bool revisarStatus = false;
 
   List<Map<String, dynamic>> extintores = [];
 
@@ -27,9 +27,8 @@ class _ManutencaoExtintorPageState extends State<ManutencaoExtintorPage> {
     _carregarExtintores();
   }
 
-  // Função para carregar os extintores do backend
   Future<void> _carregarExtintores() async {
-    final url = Uri.parse('http://10.0.2.2:3001/extintores');
+    final url = Uri.parse('http://localhost:3001/extintores');
     final response = await http.get(url);
 
     if (response.statusCode == 200) {
@@ -38,144 +37,10 @@ class _ManutencaoExtintorPageState extends State<ManutencaoExtintorPage> {
         setState(() {
           extintores = List<Map<String, dynamic>>.from(data['extintores']);
         });
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Erro ao carregar extintores'),
-        ));
       }
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Erro de comunicação com o servidor'),
-      ));
     }
   }
 
-  // Função para salvar a manutenção e atualizar o status do extintor
-  Future<void> _salvarManutencao() async {
-    if (idExtintor == null ||
-        descricaoController.text.isEmpty ||
-        responsavelController.text.isEmpty ||
-        dataManutencao == null ||
-        ultimaRecarga == null ||
-        proximaInspecao == null ||
-        vencimento == null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text("Todos os campos devem ser preenchidos"),
-      ));
-      return;
-    }
-
-    final url = Uri.parse('http://10.0.2.2:3001/salvar_manutencao');
-    final response = await http.post(url,
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({
-          'patrimonio': idExtintor,
-          'descricao': descricaoController.text,
-          'responsavel': responsavelController.text,
-          'observacoes': observacoesController.text,
-          'data_manutencao': DateFormat('yyyy-MM-dd').format(dataManutencao!),
-          'ultima_recarga': DateFormat('yyyy-MM-dd').format(ultimaRecarga!),
-          'proxima_inspecao': DateFormat('yyyy-MM-dd').format(proximaInspecao!),
-          'data_vencimento': DateFormat('yyyy-MM-dd').format(vencimento!),
-          'revisar_status': revisarStatus,
-        }));
-
-    if (response.statusCode == 200) {
-      final responseData = json.decode(response.body);
-      if (responseData['success']) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text("Manutenção salva com sucesso!"),
-        ));
-        // Verifica se a revisão do status foi solicitada
-        if (revisarStatus) {
-          _mostrarRevisaoStatus();
-        }
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text("Erro ao salvar a manutenção"),
-        ));
-      }
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content:
-            Text("Erro ao comunicar com o servidor: ${response.statusCode}"),
-      ));
-    }
-  }
-
-  // Função para exibir a revisão manual do status
-  void _mostrarRevisaoStatus() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Revisar Status'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('Deseja alterar o status do extintor para "Ativo"?'),
-              SwitchListTile(
-                title: Text("Alterar para Ativo"),
-                value: revisarStatus,
-                onChanged: (bool value) {
-                  setState(() {
-                    revisarStatus = value;
-                  });
-                },
-              ),
-            ],
-          ),
-          actions: <Widget>[
-            TextButton(
-              child: Text("Cancelar"),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-            TextButton(
-              child: Text("Confirmar"),
-              onPressed: () {
-                // Atualize o status do extintor no backend com base na revisão
-                _atualizarStatus();
-                Navigator.of(context).pop();
-              },
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  // Função para atualizar o status no servidor
-  Future<void> _atualizarStatus() async {
-    final url = Uri.parse('http://10.0.2.2:3001/atualizar_status');
-    final response = await http.post(url,
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({
-          'patrimonio': idExtintor,
-          'status': revisarStatus ? 'Ativo' : 'Em Manutenção',
-        }));
-
-    if (response.statusCode == 200) {
-      final responseData = json.decode(response.body);
-      if (responseData['success']) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text("Status atualizado com sucesso!"),
-        ));
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text("Erro ao atualizar o status"),
-        ));
-      }
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content:
-            Text("Erro ao comunicar com o servidor: ${response.statusCode}"),
-      ));
-    }
-  }
-
-  // Função para selecionar a data
   Future<void> _selecionarData(BuildContext context, String tipoData) async {
     DateTime? picked = await showDatePicker(
       context: context,
@@ -184,7 +49,7 @@ class _ManutencaoExtintorPageState extends State<ManutencaoExtintorPage> {
       lastDate: DateTime(2101),
     );
 
-    if (picked != null && picked != DateTime.now()) {
+    if (picked != null) {
       setState(() {
         switch (tipoData) {
           case 'manutencao':
@@ -204,104 +69,205 @@ class _ManutencaoExtintorPageState extends State<ManutencaoExtintorPage> {
     }
   }
 
+  Future<void> _salvarManutencao() async {
+    if (idExtintor == null ||
+        descricaoController.text.isEmpty ||
+        responsavelController.text.isEmpty ||
+        dataManutencao == null ||
+        ultimaRecarga == null ||
+        proximaInspecao == null ||
+        vencimento == null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text("Todos os campos devem ser preenchidos"),
+      ));
+      return;
+    }
+
+    final url = Uri.parse('http://localhost:3001/salvar_manutencao');
+    final response = await http.post(url,
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'patrimonio': idExtintor,
+          'descricao': descricaoController.text,
+          'responsavel': responsavelController.text,
+          'observacoes': observacoesController.text,
+          'data_manutencao': DateFormat('yyyy-MM-dd').format(dataManutencao!),
+          'ultima_recarga': DateFormat('yyyy-MM-dd').format(ultimaRecarga!),
+          'proxima_inspecao': DateFormat('yyyy-MM-dd').format(proximaInspecao!),
+          'data_vencimento': DateFormat('yyyy-MM-dd').format(vencimento!),
+          'revisar_status': revisarStatus,
+        }));
+
+    if (response.statusCode == 200) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text("Manutenção salva com sucesso!"),
+      ));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Histórico de Manutenção")),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            DropdownButton<int>(
-              value: idExtintor,
-              hint: Text("Selecione o Extintor"),
-              onChanged: (int? newValue) {
-                setState(() {
-                  idExtintor = newValue;
-                });
-              },
-              items: extintores.map((extintor) {
-                return DropdownMenuItem<int>(
-                  value: extintor['Patrimonio'],
-                  child: Text('Extintor ${extintor['Patrimonio']}'),
-                );
-              }).toList(),
-            ),
-            TextField(
-              controller: descricaoController,
-              decoration: InputDecoration(labelText: 'Descrição da Manutenção'),
-            ),
-            TextField(
-              controller: responsavelController,
-              decoration:
-                  InputDecoration(labelText: 'Responsável pela Manutenção'),
-            ),
-            TextField(
-              controller: observacoesController,
-              decoration: InputDecoration(labelText: 'Observações'),
-            ),
-            SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () => _selecionarData(context, 'manutencao'),
-                    child: Text(dataManutencao == null
-                        ? 'Data da Manutenção'
-                        : DateFormat('dd/MM/yyyy').format(dataManutencao!)),
+      backgroundColor: const Color(0xFFD9D9D9),
+      appBar: AppBar(
+        title: const Text(
+          "Histórico de Manutenção",
+          style: TextStyle(color: Colors.white),
+        ),
+        centerTitle: true,
+        backgroundColor: const Color(0xFF011689),
+        elevation: 4,
+        iconTheme: const IconThemeData(color: Color(0xFFD9D9D9)),
+      ),
+      body: Center(
+        child: Card(
+          elevation: 8,
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          color: const Color(0xFFD9D9D9), // Cor do card
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text(
+                    "Selecione o Extintor:",
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
-                ),
-                SizedBox(width: 8),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () => _selecionarData(context, 'recarga'),
-                    child: Text(ultimaRecarga == null
-                        ? 'Última Recarga'
-                        : DateFormat('dd/MM/yyyy').format(ultimaRecarga!)),
+                  const SizedBox(height: 8),
+                  DropdownButtonFormField<int>(
+                    value: idExtintor,
+                    decoration: InputDecoration(
+                      border: OutlineInputBorder(),
+                      filled: true,
+                      fillColor: const Color(0xFFD9D9D9), // Cor do campo
+                    ),
+                    hint: const Text("Selecione o extintor"),
+                    items: extintores.map((extintor) {
+                      return DropdownMenuItem<int>(
+                        value: extintor['Patrimonio'],
+                        child: Text('Extintor ${extintor['Patrimonio']}'),
+                      );
+                    }).toList(),
+                    onChanged: (int? value) {
+                      setState(() {
+                        idExtintor = value;
+                      });
+                    },
                   ),
-                ),
-              ],
-            ),
-            SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () => _selecionarData(context, 'inspecao'),
-                    child: Text(proximaInspecao == null
-                        ? 'Próxima Inspeção'
-                        : DateFormat('dd/MM/yyyy').format(proximaInspecao!)),
+                  const SizedBox(height: 16),
+                  _buildTextField(
+                      descricaoController, "Descrição da Manutenção"),
+                  const SizedBox(height: 16),
+                  _buildTextField(responsavelController, "Responsável"),
+                  const SizedBox(height: 16),
+                  _buildTextField(observacoesController, "Observações"),
+                  const SizedBox(height: 16),
+
+                  // Fila de duas datas (Data de Manutenção e Última Recarga)
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: _buildDateField(
+                            "Data de Manutenção", dataManutencao, 'manutencao'),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: _buildDateField(
+                            "Última Recarga", ultimaRecarga, 'recarga'),
+                      ),
+                    ],
                   ),
-                ),
-                SizedBox(width: 8),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () => _selecionarData(context, 'vencimento'),
-                    child: Text(vencimento == null
-                        ? 'Data de Vencimento'
-                        : DateFormat('dd/MM/yyyy').format(vencimento!)),
+                  const SizedBox(height: 8),
+
+                  // Fila de duas datas (Próxima Inspeção e Vencimento)
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: _buildDateField(
+                            "Próxima Inspeção", proximaInspecao, 'inspecao'),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: _buildDateField(
+                            "Vencimento", vencimento, 'vencimento'),
+                      ),
+                    ],
                   ),
-                ),
-              ],
+                  const SizedBox(height: 16),
+
+                  SwitchListTile(
+                    title: const Text("Revisar Status do Extintor"),
+                    value: revisarStatus,
+                    onChanged: (bool value) {
+                      setState(() {
+                        revisarStatus = value;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  Center(
+                    child: ElevatedButton(
+                      onPressed: _salvarManutencao,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF011689),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 32, vertical: 16),
+                      ),
+                      child: const Text(
+                        "Salvar Manutenção",
+                        style:
+                            TextStyle(fontSize: 16, color: Color(0xFFD9D9D9)),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-            SizedBox(height: 16),
-            SwitchListTile(
-              title: Text("Revisar Status do Extintor?"),
-              value: revisarStatus,
-              onChanged: (bool value) {
-                setState(() {
-                  revisarStatus = value;
-                });
-              },
-            ),
-            SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _salvarManutencao,
-              child: Text("Salvar Manutenção"),
-            ),
-          ],
+          ),
         ),
       ),
+    );
+  }
+
+  Widget _buildTextField(TextEditingController controller, String labelText) {
+    return TextField(
+      controller: controller,
+      decoration: InputDecoration(
+        labelText: labelText,
+        border: OutlineInputBorder(),
+        filled: true,
+        fillColor: const Color(0xFFD9D9D9), // Cor dos campos
+      ),
+    );
+  }
+
+  Widget _buildDateField(String label, DateTime? date, String tipoData) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 8),
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.white,
+            foregroundColor: Colors.black,
+            side: BorderSide(color: Colors.grey.shade400),
+          ),
+          onPressed: () => _selecionarData(context, tipoData),
+          child: Text(
+            date == null
+                ? "Selecione a data"
+                : DateFormat('dd/MM/yyyy').format(date),
+            style: TextStyle(color: date == null ? Colors.grey : Colors.black),
+          ),
+        ),
+      ],
     );
   }
 }

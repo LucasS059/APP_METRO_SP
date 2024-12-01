@@ -3,7 +3,7 @@ import 'package:mobilegestaoextintores/src/telas/Tela_Login.dart';
 import 'package:flutter/material.dart';
 import 'package:mobilegestaoextintores/src/telas/Tela_Privacidade.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'tela_conta.dart'; 
+import 'tela_conta.dart';
 
 class TelaConfiguracao extends StatelessWidget {
   const TelaConfiguracao({super.key});
