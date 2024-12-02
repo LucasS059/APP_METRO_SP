@@ -15,7 +15,7 @@ CREATE TABLE tipos_extintores (
     tipo VARCHAR(50) NOT NULL UNIQUE,
     PRIMARY KEY (id)
 );
-
+SELECT * FROM Extintores WHERE Patrimonio = '1';
 -- Tabela de status de extintores
 CREATE TABLE status_extintor (
     id INT NOT NULL AUTO_INCREMENT,
@@ -173,6 +173,4 @@ INSERT INTO localizacoes (Linha_ID, Estacao, Descricao_Local, Observacoes) VALUE
 (5, 'Capão Redondo', 'Próximo à entrada de serviços.', 'Extintor em local estratégico.');
 
 
--- Inserindo dados na tabela de usuários
-INSERT INTO usuarios (nome, email, senha, matricula, cargo_id) VALUES 
-('Lucas Silva', 'lucasbarboza299@gmail.com', 'senha123', 'MATRICULA001', 1);
+
