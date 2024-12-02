@@ -2,9 +2,6 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
-import 'package:pdf/pdf.dart';
-import 'package:pdf/widgets.dart' as pw;
-import 'package:printing/printing.dart';
 
 class TelaAtualizarExtintor extends StatefulWidget {
   @override
@@ -70,71 +67,38 @@ class _TelaAtualizarExtintorState extends State<TelaAtualizarExtintor> {
   }
 
   Future<void> _buscarExtintor() async {
-  final patrimonio = _patrimonioController.text;
-  if (patrimonio.isEmpty) {
-    _showErrorDialog('Por favor, insira o patrimônio do extintor.');
-    return;
-  }
-  print('Buscando extintor com patrimônio: $patrimonio');
-
-  final response = await http.get(Uri.parse('http://10.0.2.2:3001/extintor/$patrimonio'));
-  if (response.statusCode == 200) {
-    final data = json.decode(response.body)['extintor']; // Acesse a chave correta
-    if (data != null) {
-      setState(() {
-        _codigoFabricanteController.text = data['Codigo_Fabricante'] ?? '';
-        _dataFabricacaoController.text = DateFormat('dd/MM/yyyy').format(DateTime.parse(data['Data_Fabricacao']));
-        _dataValidadeController.text = DateFormat('dd/MM/yyyy').format(DateTime.parse(data['Data_Validade']));
-        _ultimaRecargaController.text = DateFormat('dd/MM/yyyy').format(DateTime.parse(data['Ultima_Recarga']));
-        _proximaInspecaoController.text = DateFormat('dd/MM/yyyy').format(DateTime.parse(data['Proxima_Inspecao']));
-        
-        // Atribuindo os IDs corretos para os dropdowns
-        _tipoSelecionado = data['Tipo']; // Aqui você pode precisar do ID correspondente
-        _linhaSelecionada = data['Linha_Nome']; // Aqui você pode precisar do ID correspondente
-        _statusSelecionado = data['Status'];
-
-        _descricaoLocalController.text = data['Localizacao_Subarea'] ?? '';
-        _observacaoLocalController.text = data['Observacoes_Local'] ?? '';
-        _observacoesController.text = data['Observacoes_Extintor'] ?? '';
-        _estacaoController.text = data['Localizacao_Area'] ?? '';
-        _qrCodeUrl = data['QR_Code'] ?? '';
-      });
-    } else {
-      _showErrorDialog('Extintor não encontrado.');
+    final patrimonio = _patrimonioController.text;
+    if (patrimonio.isEmpty) {
+      _showErrorDialog('Por favor, insira o patrimônio do extintor.');
+      return;
     }
-  } else {
-    _showErrorDialog('Erro ao buscar extintor: ${response.statusCode}');
-  }
-}
 
-Widget _buildDropdown({
-  required String label,
-  required List<Map<String, dynamic>> items,
-  String? value,
-  required Function(String?) onChanged,
-  required String Function(Map<String, dynamic>) displayItem,
-}) {
-  return DropdownButtonFormField<String>(
-    isExpanded: true,
-    value: value,
-    items: items.map((item) {
-      return DropdownMenuItem<String>(
-        value: item['id'].toString(), // Certifique-se de que o valor é o ID
-        child: Text(displayItem(item)),
-      );
-    }).toList(),
-    onChanged: onChanged,
-    decoration: InputDecoration(
-      labelText: label,
-      filled: true,
-      fillColor: const Color(0xFFE3F2FD), // Azul claro
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide(color: const Color(0xFF011689)), // Azul da AppBar
-      ),
-    ),
-  );
-}
+    final response = await http.get(Uri.parse('http://10.0.2.2:3001/extintor/$patrimonio'));
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body)['extintor'];
+      if (data != null) {
+        setState(() {
+          _codigoFabricanteController.text = data['Codigo_Fabricante'] ?? '';
+          _dataFabricacaoController.text = DateFormat('dd/MM/yyyy').format(DateTime.parse(data['Data_Fabricacao']));
+          _dataValidadeController.text = DateFormat('dd/MM/yyyy').format(DateTime.parse(data['Data_Validade']));
+          _ultimaRecargaController.text = DateFormat('dd/MM/yyyy').format(DateTime.parse(data['Ultima_Recarga']));
+          _proximaInspecaoController.text = DateFormat('dd/MM/yyyy').format(DateTime.parse(data['Proxima_Inspecao']));
+          _tipoSelecionado = data['Tipo']; // Atribua o ID correto
+          _linhaSelecionada = data['Linha_Nome']; // Atribua o ID correto
+          _statusSelecionado = data['Status'];
+          _descricaoLocalController.text = data['Localizacao_Subarea'] ?? '';
+          _observacaoLocalController.text = data['Observacoes_Local'] ?? '';
+          _observacoesController.text = data['Observacoes_Extintor'] ?? '';
+          _estacaoController.text = data['Localizacao_Area'] ?? '';
+          _qrCodeUrl = data['QR_Code'] ?? '';
+        });
+      } else {
+        _showErrorDialog('Extintor não encontrado.');
+      }
+    } else {
+      _showErrorDialog('Erro ao buscar extintor: ${response.statusCode}');
+    }
+  }
 
   Future<void> _atualizarExtintor() async {
     final patrimonio = _patrimonioController.text;
@@ -143,14 +107,22 @@ Widget _buildDropdown({
       return;
     }
 
+    if (_codigoFabricanteController.text.isEmpty || _dataFabricacaoController.text.isEmpty ||
+        _dataValidadeController.text.isEmpty || _ultimaRecargaController.text.isEmpty ||
+        _proximaInspecaoController.text.isEmpty || _tipoSelecionado == null ||
+        _linhaSelecionada == null || _statusSelecionado == null) {
+      _showErrorDialog('Por favor, preencha todos os campos obrigatórios.');
+      return;
+    }
+
     final extintorData = {
       "patrimonio": patrimonio,
       "tipo_id": _tipoSelecionado,
       "codigo_fabricante": _codigoFabricanteController.text,
-      "data_fabricacao": _dataFabricacaoController.text,
-      "data_validade": _dataValidadeController.text,
-      "ultima_recarga": _ultimaRecargaController.text,
-      "proxima_inspecao": _proximaInspecaoController.text,
+      "data_fabricacao": DateFormat('yyyy-MM-dd').format(DateFormat('dd/MM/yyyy').parse(_dataFabricacaoController.text)),
+      "data_validade": DateFormat('yyyy-MM-dd').format(DateFormat('dd/MM/yyyy').parse(_dataValidadeController.text)),
+      "ultima_recarga": DateFormat('yyyy-MM-dd').format(DateFormat('dd/MM/yyyy').parse(_ultimaRecargaController.text)),
+      "proxima_inspecao": DateFormat('yyyy-MM-dd').format(DateFormat('dd/MM/yyyy').parse(_proximaInspecaoController.text)),
       "linha_id": _linhaSelecionada,
       "estacao": _estacaoController.text,
       "descricao_local": _descricaoLocalController.text,
@@ -174,51 +146,6 @@ Widget _buildDropdown({
       }
     } catch (e) {
       _showErrorDialog('Erro de conexão: $e');
-    }
-  }
-
-  Future<void> _gerarQRCode(String patrimonio) async {
-    final response = await http.post(
-      Uri.parse('http://10.0.2.2:3001/gerar_qrcode'),
-      headers: {"Content-Type": "application/json"},
-      body: jsonEncode({"patrimonio": patrimonio}),
-    );
-
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      setState(() {
-        _qrCodeUrl = data['qrCodeUrl'] ?? '';
-      });
-    } else {
-      _showErrorDialog('Erro ao gerar QR Code: ${response.body}');
-    }
-  }
-
-  Future<void> _printQRCode() async {
-    if (_qrCodeUrl == null) return;
-
-    try {
-      final response = await http.get(Uri.parse(_qrCodeUrl!));
-      if (response.statusCode == 200) {
-        final imageBytes = response.bodyBytes;
-        final pdf = pw.Document();
-
-        pdf.addPage(pw.Page(
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Image(pw.MemoryImage(imageBytes)),
-            );
-          },
-        ));
-
-        await Printing.layoutPdf(onLayout: (PdfPageFormat format) async {
-          return pdf.save();
-        });
-      } else {
-        _showErrorDialog('Falha ao carregar o QR Code.');
-      }
-    } catch (e) {
-      _showErrorDialog('Erro ao tentar baixar a imagem: $e');
     }
   }
 
@@ -277,172 +204,81 @@ Widget _buildDropdown({
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
               const SizedBox(height: 20),
-              _buildOptionCard(
-                title: "Buscar Extintor",
-                description: "Insira o patrimônio do extintor para buscar suas informações.",
-                child: _buildTextField(controller: _patrimonioController, label: 'Patrimônio'),
+              TextField(
+                controller: _patrimonioController,
+                decoration: InputDecoration(labelText: 'Patrimônio'),
+              ),
+              ElevatedButton(
                 onPressed: _buscarExtintor,
+                child: const Text('Buscar Extintor'),
+              ),
+              const SizedBox(height : 20),
+              TextField(
+                controller: _codigoFabricanteController,
+                decoration: InputDecoration(labelText: 'Código do Fabricante'),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _dataFabricacaoController,
+                decoration: InputDecoration(labelText: 'Data de Fabricação'),
+                readOnly: true,
+                onTap: () => _selectDate(_dataFabricacaoController),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _dataValidadeController,
+                decoration: InputDecoration(labelText: 'Data de Validade'),
+                readOnly: true,
+                onTap: () => _selectDate(_dataValidadeController),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _ultimaRecargaController,
+                decoration: InputDecoration(labelText: 'Última Recarga'),
+                readOnly: true,
+                onTap: () => _selectDate(_ultimaRecargaController),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _proximaInspecaoController,
+                decoration: InputDecoration(labelText: 'Próxima Inspeção'),
+                readOnly: true,
+                onTap: () => _selectDate(_proximaInspecaoController),
+              ),
+              const SizedBox(height: 12),
+              // Dropdowns para Tipo, Linha e Status
+              // Adicione os widgets de dropdown aqui
+              const SizedBox(height: 12),
+              TextField(
+                controller: _estacaoController,
+                decoration: InputDecoration(labelText: 'Estação'),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _descricaoLocalController,
+                decoration: InputDecoration(labelText: 'Descrição do Local'),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _observacaoLocalController,
+                decoration: InputDecoration(labelText: 'Observação sobre o local'),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _observacoesController,
+                decoration: InputDecoration(labelText: 'Observações do Extintor'),
               ),
               const SizedBox(height: 20),
-              _buildOptionCard(
-                title: "Atualizar Dados do Extintor",
-                description: "Atualize as informações do extintor após a busca.",
-                child: Column(
-                  children: [
-                    _buildTextField(controller: _codigoFabricanteController, label: 'Código do Fabricante'),
-                    const SizedBox(height: 12),
-                    _buildTextField(controller: _dataFabricacaoController, label: 'Data de Fabricação', isDate: true),
-                    const SizedBox(height: 12),
-                    _buildTextField(controller: _dataValidadeController, label: 'Data de Validade', isDate: true),
-                    const SizedBox(height: 12),
-                    _buildTextField(controller: _ultimaRecargaController, label: 'Última Recarga', isDate: true),
-                    const SizedBox(height: 12),
-                    _buildTextField(controller: _proximaInspecaoController, label: 'Próxima Inspeção', isDate: true),
-                    const SizedBox(height: 12),
-                    _buildDropdown(
-                      label: 'Tipo',
-                      items: tipos,
-                      value: _tipoSelecionado,
-                      onChanged: (value) {
-                        setState(() {
-                          _tipoSelecionado = value;
-                        });
-                      },
-                      displayItem: (item) => item['nome'],
-                    ),
-                    const SizedBox(height: 12),
-                    _buildDropdown(
-                      label: 'Linha',
-                      items: linhas,
-                      value: _linhaSelecionada,
-                      onChanged: (value) {
-                        setState(() {
-                          _linhaSelecionada = value;
-                        });
-                      },
-                      displayItem: (item) => item['nome'],
-                    ),
-                    const SizedBox(height: 12),
-                    _buildTextField(controller: _estacaoController, label: 'Estação'),
-                    const SizedBox(height: 12),
-                    _buildDropdown(
-                      label: 'Status',
-                      items: status,
-                      value: _statusSelecionado,
-                      onChanged: (value) {
-                        setState(() {
-                          _statusSelecionado = value;
-                        });
-                      },
-                      displayItem: (item) => item['nome'],
-                    ),
-                    const SizedBox(height: 12),
-                    _buildTextField(controller: _descricaoLocalController, label: 'Descrição do Local'),
-                    const SizedBox(height: 12),
-                    _buildTextField(controller: _observacaoLocalController, label: 'Observação sobre o local'),
-                    const SizedBox(height: 12),
-                    _buildTextField(controller: _observacoesController, label: 'Observações do Extintor'),
-                  ],
-                ),
+              ElevatedButton(
                 onPressed: _atualizarExtintor,
+                child: const Text('Atualizar Extintor'),
               ),
-              const SizedBox(height: 20),
-              if (_qrCodeUrl != null) ...[
-                Image.network(
-                  _qrCodeUrl!,
-                  errorBuilder: (context, error, stackTrace) {
-                    print("Erro ao carregar imagem: $error");
-                    return const Text("Erro ao carregar QR Code.");
-                  },
-                ),
-                const SizedBox(height: 20),
-                ElevatedButton(
-                  onPressed: _printQRCode,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF011689),
-                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-                  ),
-                  child: const Text('Imprimir QR Code', style: TextStyle(color: Colors.white)),
-                ),
-              ],
             ],
           ),
         ),
       ),
     );
   }
-
-  Widget _buildOptionCard({
-    required String title,
-    required String description,
-    required Widget child,
-    required VoidCallback onPressed,
-  }) {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF011689),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              description,
-              style: const TextStyle(
-                fontSize: 14,
-                color: Colors.black54,
-              ),
-            ),
-            const SizedBox(height: 16),
-            child,
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: onPressed,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF011689),
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              ),
-              child: const Text(
-                "Confirmar",
-                style: TextStyle(fontSize: 16, color: Colors.white),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTextField({
-    required TextEditingController controller,
-    required String label,
-    bool isDate = false,
-  }) {
-    return TextFormField(
-      controller: controller,
-      readOnly: isDate,
-      decoration: InputDecoration(
-        labelText: label,
-        filled: true,
-        fillColor: const Color(0xFFE3F2FD), // Azul claro
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: const Color(0xFF011689)), // Azul da AppBar
-        ),
-      ),
-      onTap: isDate ? () => _selectDate(controller) : null,
-    );
-  }
-
 
   Future<void> _selectDate(TextEditingController controller) async {
     DateTime? pickedDate = await showDatePicker(
@@ -457,4 +293,8 @@ Widget _buildDropdown({
       });
     }
   }
+}
+
+class _gerarQRCode {
+  _gerarQRCode(String patrimonio);
 }
