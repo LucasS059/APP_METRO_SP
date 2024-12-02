@@ -15,7 +15,7 @@ class _ForgotPasswordScreenState extends State<TelaEsqueceuSenha> {
 
   // Defina a URL base do seu backend
   final String _baseUrl =
-      'http://localhost:3001'; // Altere para o endereço do seu servidor
+      'http://10.0.2.2:3001'; // Altere para o endereço do seu servidor
 
   void _submitEmail() async {
     final email = _emailController.text.trim();

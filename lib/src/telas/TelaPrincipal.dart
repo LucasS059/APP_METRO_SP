@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:mobilegestaoextintores/src/telas/Configuracao/Tela_Configuracao.dart';
 import 'package:mobilegestaoextintores/src/telas/Tela_Consulta.dart';
 import 'package:mobilegestaoextintores/src/telas/Tela_Localizacao.dart';
 import 'package:mobilegestaoextintores/src/telas/Tela_RegistrarExtintorManual.dart';
-import 'package:mobilegestaoextintores/src/telas/Tela_Selecionar_Manutencao.dart';
-import 'tela_configuracao.dart';
+import 'package:mobilegestaoextintores/src/telas/Manutencao/Tela_Selecionar_Manutencao.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class TelaPrincipal extends StatelessWidget {

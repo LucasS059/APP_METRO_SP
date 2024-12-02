@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-
 import 'package:shared_preferences/shared_preferences.dart';
 
 class TelaReportarErro extends StatefulWidget {
@@ -32,24 +31,20 @@ class _TelaReportarErroState extends State<TelaReportarErro> {
     final erro = _controller.text.trim();
     if (erro.isNotEmpty && _usuarioEmail != null) {
       final response = await http.post(
-        Uri.parse('http://localhost:3001/enviar-email'), // URL do seu servidor
+        Uri.parse('http://10.0.2.2:3001/reportar-erro'),
         headers: {
           'Content-Type': 'application/json',
         },
         body: json.encode({
-          'subject': 'Relato de Erro - Aplicativo', // Assunto do e-mail
-          'body': 'Erro reportado por: $_usuarioEmail\n\n$erro', // Inclui o email do usuário
+          'usuarioEmail': _usuarioEmail,
+          'erroDescricao': erro,
         }),
       );
 
       if (response.statusCode == 200) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Erro reportado com sucesso!')),
-        );
+        _mostrarDialogo('Sucesso', 'Erro reportado com sucesso!');
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Falha ao reportar o erro.')),
-        );
+        _mostrarDialogo('Erro', 'Falha ao reportar o erro: ${response.body}');
       }
 
       _controller.clear(); // Limpa o campo de texto após o envio
@@ -60,7 +55,27 @@ class _TelaReportarErroState extends State<TelaReportarErro> {
       );
     }
   }
-  
+
+  void _mostrarDialogo(String titulo, String mensagem) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(titulo),
+          content: Text(mensagem),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('OK'),
+              onPressed: () {
+                Navigator.of(context).pop(); // Fecha o diálogo
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -90,38 +105,32 @@ class _TelaReportarErroState extends State<TelaReportarErro> {
                 child: const Text(
                   'Caso tenha identificado algum erro, favor reportar abaixo',
                   style: TextStyle(
-                    fontSize: 18, // Tamanho do texto
+                    fontSize: 18,
                   ),
-                  textAlign:
-                      TextAlign.center, // Centraliza o texto no contêiner
+                  textAlign: TextAlign.center,
                 ),
               ),
             ),
-            const SizedBox(
-                height: 16), // Espaço entre o título e o campo de texto
-            // Caixa de texto dentro de um retângulo cinza claro
+            const SizedBox(height: 16),
             Center(
               child: Container(
                 padding: const EdgeInsets.all(16.0),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFD9D9D9), // Cor de fundo do retângulo
+                  color: const Color(0xFFD9D9D9),
                   borderRadius: BorderRadius.circular(8.0),
                 ),
                 child: TextField(
                   controller: _controller,
                   decoration: InputDecoration(
                     hintText: 'Descreva o erro...',
-                    border: InputBorder.none, // Removendo borda padrão
+                    border: InputBorder.none,
                   ),
-                  maxLines: 5, // Permite múltiplas linhas de texto
-                  keyboardType: TextInputType
-                      .multiline, // Tipo de teclado para múltiplas linhas
+                  maxLines: 5,
+                  keyboardType: TextInputType.multiline,
                 ),
               ),
             ),
-            const SizedBox(
-                height: 16), // Espaço entre o campo de texto e o botão
-            // Botão centralizado
+            const SizedBox(height: 16),
             Center(
               child: ElevatedButton(
                 onPressed: _enviarErro,
@@ -129,33 +138,29 @@ class _TelaReportarErroState extends State<TelaReportarErro> {
                   'Enviar Erro',
                   style: TextStyle(
                       color: Color(0xFFD9D9D9),
-                      fontSize: 20), // Cor do texto do botão
+                      fontSize: 20),
                 ),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor:
-                      const Color(0xFF011689), // Cor de fundo do botão
+                  backgroundColor: const Color(0xFF011689),
                   padding: const EdgeInsets.symmetric(
                       vertical: 15,
-                      horizontal: 40), // Aumentando o tamanho do botão
+                      horizontal: 40),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
               ),
             ),
-            // Logo opaca centralizada
-            const Spacer(), // Espaço para empurrar a logo para o fundo
+            const Spacer(),
             Opacity(
               opacity: 0.2,
               child: Container(
-                width:
-                    MediaQuery.of(context).size.width * 0.5, // 50% da largura
-                height:
-                    MediaQuery.of(context).size.height * 0.1, // 10% da altura
+                width: MediaQuery.of(context).size.width * 0.5,
+                height: MediaQuery.of(context).size.height * 0.1,
                 child: FittedBox(
-                  fit: BoxFit.contain, // Ajusta a imagem sem distorção
+                  fit: BoxFit.contain,
                   child: Image.asset(
-                    'assets/images/logo.jpeg', // Caminho da imagem
+                    'assets/images/logo.jpeg',
                   ),
                 ),
               ),

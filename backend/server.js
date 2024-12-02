@@ -21,7 +21,7 @@ const app = express();
 const db = mysql.createConnection({
     host: 'localhost',
     user: 'root',
-    password: '9534',
+    password: 'imtdb',
     database: 'metro_sp',
 });
 
@@ -55,7 +55,7 @@ db.connect((err) => {
         return;
     }
     console.log('Conectado ao banco de dados MySQL');
-    // inserirUsuario('Lucas Silva', 'lucasbarboza299a@gmail.com', 'senha123', 'MT0002', 2); // Altere os parâmetros conforme necessário
+    // inserirUsuario('Lucas Silva', 'lucasbarboza299@gmail.com', 'senha123', 'MT0002', 2); // Altere os parâmetros conforme necessário
 
 });
 
@@ -77,7 +77,7 @@ if (!fs.existsSync(uploadsDir)) {
 }
 
 const gerarSalvarQRCode = async (patrimonio) => {
-    const qrCodeData = `http://localhost:3001/pdf/${patrimonio}`; // Link para o PDF do extintor
+    const qrCodeData = `http://10.0.2.2:3001/pdf/${patrimonio}`; // Link para o PDF do extintor
     const qrCodePath = path.join(uploadsDir, `${patrimonio}-qrcode.png`);
 
     await QRCode.toFile(qrCodePath, qrCodeData);
@@ -489,8 +489,7 @@ app.get('/patrimonio', (req, res) => {
 
 app.get('/extintor/:patrimonio', (req, res) => {
     const patrimonio = req.params.patrimonio;
-    const qrCodePath = `uploads/${patrimonio}-qrcode.png`;
-    const qrCodeUrl = `${req.protocol}://${req.get('host')}/${qrCodePath}`;
+    console.log(`Recebendo requisição para buscar extintor com patrimônio: ${patrimonio}`);
 
     const query = `
     SELECT 
@@ -523,7 +522,8 @@ app.get('/extintor/:patrimonio', (req, res) => {
     LEFT JOIN linhas ln ON e.Linha_ID = ln.id
     LEFT JOIN historico_manutencao hm ON e.Patrimonio = hm.ID_Extintor
     WHERE e.Patrimonio = ?
-`;
+    `;
+    
     db.query(query, [patrimonio], (err, results) => {
         if (err) {
             console.error('Erro ao buscar extintor:', err);
@@ -535,8 +535,8 @@ app.get('/extintor/:patrimonio', (req, res) => {
         }
 
         const extintor = results[0];
-        extintor.QR_Code = qrCodeUrl;
-        console.log('Dados do extintor:', extintor); // Adicione este log
+        extintor.QR_Code = `http://10.0.2.2:3001/uploads/${patrimonio}-qrcode.png`;
+        console.log('Dados do extintor:', extintor);
         res.status(200).json({ success: true, extintor });
     });
 });
@@ -820,7 +820,7 @@ app.post('/forgot-password', (req, res) => {
                 return res.status(500).json({ error: 'Erro no servidor ao salvar token de recuperação' });
             }
 
-            const resetUrl = `http://localhost:3001/reset-password?token=${token}`; const mailOptions = {
+            const resetUrl = `http://10.0.2.2:3001/reset-password?token=${token}`; const mailOptions = {
                 from: 'suporte.redefinir.senha.imt.pi@gmail.com',
                 to: email,
                 subject: 'Recuperação de senha',
@@ -920,6 +920,30 @@ app.get('/reset-password', (req, res) => {
     `);
 });
 
+app.post('/reportar-erro', async (req, res) => {
+    const { usuarioEmail, erroDescricao } = req.body;
+
+    if (!usuarioEmail || !erroDescricao) {
+        return res.status(400).json({ success: false, message: 'E-mail do usuário e descrição do erro são obrigatórios.' });
+    }
+
+    try {
+        // Configura os detalhes do e-mail
+        const mailOptions = {
+            from: usuarioEmail, // E-mail do usuário logado
+            to: 'suporte.redefinir.senha.imt.pi@gmail.com', // e-mail de destino (suporte ou outro)
+            subject: 'Relato de Erro - Aplicativo',
+            text: `Erro reportado por: ${usuarioEmail}\n\nDescrição do erro: ${erroDescricao}`
+        };
+
+        // Envia o e-mail
+        await transporter.sendMail(mailOptions);
+        res.status(200).json({ success: true, message: 'Erro reportado com sucesso!' });
+    } catch (error) {
+        console.error('Erro ao reportar erro:', error);
+        res.status(500).json({ success: false, message: 'Falha ao reportar erro.' });
+    }
+});
 
 
 const PORT = 3001;

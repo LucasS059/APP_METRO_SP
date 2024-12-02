@@ -43,7 +43,7 @@ class _TelaAtualizarExtintorState extends State<TelaAtualizarExtintor> {
   }
 
   Future<void> fetchTipos() async {
-    final response = await http.get(Uri.parse('http://localhost:3001/tipos-extintores'));
+    final response = await http.get(Uri.parse('http://10.0.2.2:3001/tipos-extintores'));
     if (response.statusCode == 200) {
       setState(() {
         tipos = List<Map<String, dynamic>>.from(json.decode(response.body)['data']);
@@ -52,7 +52,7 @@ class _TelaAtualizarExtintorState extends State<TelaAtualizarExtintor> {
   }
 
   Future<void> fetchLinhas() async {
-    final response = await http.get(Uri.parse('http://localhost:3001/linhas'));
+    final response = await http.get(Uri.parse('http://10.0.2.2:3001/linhas'));
     if (response.statusCode == 200) {
       setState(() {
         linhas = List<Map<String, dynamic>>.from(json.decode(response.body)['data']);
@@ -61,7 +61,7 @@ class _TelaAtualizarExtintorState extends State<TelaAtualizarExtintor> {
   }
 
   Future<void> fetchStatus() async {
-    final response = await http.get(Uri.parse('http://localhost:3001/status'));
+    final response = await http.get(Uri.parse('http://10.0.2.2:3001/status'));
     if (response.statusCode == 200) {
       setState(() {
         status = List<Map<String, dynamic>>.from(json.decode(response.body)['data']);
@@ -70,38 +70,71 @@ class _TelaAtualizarExtintorState extends State<TelaAtualizarExtintor> {
   }
 
   Future<void> _buscarExtintor() async {
-    final patrimonio = _patrimonioController.text;
-    if (patrimonio.isEmpty) {
-      _showErrorDialog('Por favor, insira o patrimônio do extintor.');
-      return;
-    }
-
-    final response = await http.get(Uri.parse('http://localhost:3001/extintores/$patrimonio'));
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      if (data != null) {
-        setState(() {
-          _codigoFabricanteController.text = data['codigo_fabricante'] ?? '';
-          _dataFabricacaoController.text = data['data_fabricacao'] ?? '';
-          _dataValidadeController.text = data['data_validade'] ?? '';
-          _ultimaRecargaController.text = data['ultima_recarga'] ?? '';
-          _proximaInspecaoController.text = data['proxima_inspecao'] ?? '';
-          _tipoSelecionado = data['tipo_id'].toString();
-          _linhaSelecionada = data['linha_id'].toString();
-          _statusSelecionado = data['status'] ?? '';
-          _descricaoLocalController.text = data['descricao_local'] ?? '';
-          _observacaoLocalController.text = data['observacoes_local'] ?? '';
-          _observacoesController.text = data['observacoes'] ?? '';
-          _estacaoController.text = data['estacao'] ?? '';
-          _qrCodeUrl = data['qrCodeUrl'] ?? '';
-        });
-      } else {
-        _showErrorDialog('Extintor não encontrado.');
-      }
-    } else {
-      _showErrorDialog('Erro ao buscar extintor: ${response.statusCode}');
-    }
+  final patrimonio = _patrimonioController.text;
+  if (patrimonio.isEmpty) {
+    _showErrorDialog('Por favor, insira o patrimônio do extintor.');
+    return;
   }
+  print('Buscando extintor com patrimônio: $patrimonio');
+
+  final response = await http.get(Uri.parse('http://10.0.2.2:3001/extintor/$patrimonio'));
+  if (response.statusCode == 200) {
+    final data = json.decode(response.body)['extintor']; // Acesse a chave correta
+    if (data != null) {
+      setState(() {
+        _codigoFabricanteController.text = data['Codigo_Fabricante'] ?? '';
+        _dataFabricacaoController.text = DateFormat('dd/MM/yyyy').format(DateTime.parse(data['Data_Fabricacao']));
+        _dataValidadeController.text = DateFormat('dd/MM/yyyy').format(DateTime.parse(data['Data_Validade']));
+        _ultimaRecargaController.text = DateFormat('dd/MM/yyyy').format(DateTime.parse(data['Ultima_Recarga']));
+        _proximaInspecaoController.text = DateFormat('dd/MM/yyyy').format(DateTime.parse(data['Proxima_Inspecao']));
+        
+        // Atribuindo os IDs corretos para os dropdowns
+        _tipoSelecionado = data['Tipo']; // Aqui você pode precisar do ID correspondente
+        _linhaSelecionada = data['Linha_Nome']; // Aqui você pode precisar do ID correspondente
+        _statusSelecionado = data['Status'];
+
+        _descricaoLocalController.text = data['Localizacao_Subarea'] ?? '';
+        _observacaoLocalController.text = data['Observacoes_Local'] ?? '';
+        _observacoesController.text = data['Observacoes_Extintor'] ?? '';
+        _estacaoController.text = data['Localizacao_Area'] ?? '';
+        _qrCodeUrl = data['QR_Code'] ?? '';
+      });
+    } else {
+      _showErrorDialog('Extintor não encontrado.');
+    }
+  } else {
+    _showErrorDialog('Erro ao buscar extintor: ${response.statusCode}');
+  }
+}
+
+Widget _buildDropdown({
+  required String label,
+  required List<Map<String, dynamic>> items,
+  String? value,
+  required Function(String?) onChanged,
+  required String Function(Map<String, dynamic>) displayItem,
+}) {
+  return DropdownButtonFormField<String>(
+    isExpanded: true,
+    value: value,
+    items: items.map((item) {
+      return DropdownMenuItem<String>(
+        value: item['id'].toString(), // Certifique-se de que o valor é o ID
+        child: Text(displayItem(item)),
+      );
+    }).toList(),
+    onChanged: onChanged,
+    decoration: InputDecoration(
+      labelText: label,
+      filled: true,
+      fillColor: const Color(0xFFE3F2FD), // Azul claro
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: BorderSide(color: const Color(0xFF011689)), // Azul da AppBar
+      ),
+    ),
+  );
+}
 
   Future<void> _atualizarExtintor() async {
     final patrimonio = _patrimonioController.text;
@@ -128,7 +161,7 @@ class _TelaAtualizarExtintorState extends State<TelaAtualizarExtintor> {
 
     try {
       final response = await http.put(
-        Uri.parse('http://localhost:3001/atualizar_extintor/$patrimonio'),
+        Uri.parse('http://10.0.2.2:3001/atualizar_extintor/$patrimonio'),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode(extintorData),
       );
@@ -146,7 +179,7 @@ class _TelaAtualizarExtintorState extends State<TelaAtualizarExtintor> {
 
   Future<void> _gerarQRCode(String patrimonio) async {
     final response = await http.post(
-      Uri.parse('http://localhost:3001/gerar_qrcode'),
+      Uri.parse('http://10.0.2.2:3001/gerar_qrcode'),
       headers: {"Content-Type": "application/json"},
       body: jsonEncode({"patrimonio": patrimonio}),
     );
@@ -251,7 +284,7 @@ class _TelaAtualizarExtintorState extends State<TelaAtualizarExtintor> {
                 onPressed: _buscarExtintor,
               ),
               const SizedBox(height: 20),
- _buildOptionCard(
+              _buildOptionCard(
                 title: "Atualizar Dados do Extintor",
                 description: "Atualize as informações do extintor após a busca.",
                 child: Column(
@@ -381,7 +414,7 @@ class _TelaAtualizarExtintorState extends State<TelaAtualizarExtintor> {
               child: const Text(
                 "Confirmar",
                 style: TextStyle(fontSize: 16, color: Colors.white),
- ),
+              ),
             ),
           ],
         ),
@@ -410,34 +443,6 @@ class _TelaAtualizarExtintorState extends State<TelaAtualizarExtintor> {
     );
   }
 
-  Widget _buildDropdown({
-    required String label,
-    required List<Map<String, dynamic>> items,
-    String? value,
-    required Function(String?) onChanged,
-    required String Function(Map<String, dynamic>) displayItem,
-  }) {
-    return DropdownButtonFormField<String>(
-      isExpanded: true,
-      value: value,
-      items: items.map((item) {
-        return DropdownMenuItem<String>(
-          value: item['id'].toString(),
-          child: Text(displayItem(item)),
-        );
-      }).toList(),
-      onChanged: onChanged,
-      decoration: InputDecoration(
-        labelText: label,
-        filled: true,
-        fillColor: const Color(0xFFE3F2FD), // Azul claro
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: const Color(0xFF011689)), // Azul da AppBar
-        ),
-      ),
-    );
-  }
 
   Future<void> _selectDate(TextEditingController controller) async {
     DateTime? pickedDate = await showDatePicker(

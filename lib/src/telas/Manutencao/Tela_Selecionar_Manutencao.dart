@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:mobilegestaoextintores/src/telas/Tela_Atualizar_Dados.dart';
-import 'package:mobilegestaoextintores/src/telas/Tela_Chamda_manutencao.dart';
-import 'package:mobilegestaoextintores/src/telas/Tela_Manutencao.dart';
+import 'package:mobilegestaoextintores/src/telas/Manutencao/Tela_Atualizar_Dados.dart';
+import 'package:mobilegestaoextintores/src/telas/Manutencao/Tela_Chamda_manutencao.dart';
+import 'package:mobilegestaoextintores/src/telas/Manutencao/Tela_Manutencao.dart';
 
 class TelaSelecaoPage extends StatelessWidget {
   @override
@@ -12,7 +12,7 @@ class TelaSelecaoPage extends StatelessWidget {
         centerTitle: true,
         backgroundColor: const Color(0xFF011689),
       ),
-      body: Padding(
+      body: SingleChildScrollView( // Adicione o SingleChildScrollView aqui
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -61,8 +61,7 @@ class TelaSelecaoPage extends StatelessWidget {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                      builder: (context) =>
-                          TelaAtualizarExtintor()), // Nova tela
+                      builder: (context) => TelaAtualizarExtintor()), // Nova tela
                 );
               },
             ),
