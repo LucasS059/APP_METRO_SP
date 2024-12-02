@@ -32,13 +32,13 @@ CREATE TABLE linhas (
     PRIMARY KEY (id)
 );
 
--- Tabela de localizações
+select * from localizacoes;
+
 CREATE TABLE localizacoes (
     ID_Localizacao INT NOT NULL AUTO_INCREMENT,
     Linha_ID INT UNSIGNED,
-    Area VARCHAR(50) NOT NULL,
-    Subarea VARCHAR(50),
-    Local_Detalhado VARCHAR(100),
+    Estacao VARCHAR(100) NOT NULL,  -- Nome da estação
+    Descricao_Local VARCHAR(255),     -- Descrição detalhada do local onde o extintor está
     Observacoes TEXT,
     PRIMARY KEY (ID_Localizacao),
     FOREIGN KEY (Linha_ID) REFERENCES linhas(id)
@@ -68,6 +68,8 @@ VALUES
     ('50Kg'),
     ('10L');
 
+select * from extintores;
+
 -- Tabela de extintores
 CREATE TABLE extintores (
     Patrimonio INT NOT NULL,
@@ -90,6 +92,9 @@ CREATE TABLE extintores (
     FOREIGN KEY (Linha_ID) REFERENCES linhas(id),
     FOREIGN KEY (status_id) REFERENCES status_extintor(id)
 );
+
+select * from historico_manutencao;
+
 -- Tabela de histórico de manutenção
 CREATE TABLE historico_manutencao (
     ID_Manutencao INT NOT NULL AUTO_INCREMENT,
@@ -113,120 +118,88 @@ CREATE TABLE usuarios (
     cargo_id INT UNSIGNED,
     data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     data_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    reset_password_expires DATETIME,
     PRIMARY KEY (id),
     FOREIGN KEY (cargo_id) REFERENCES cargos(id)
 );
+ALTER TABLE usuarios MODIFY COLUMN foto_perfil VARCHAR(255);
+SET SQL_SAFE_UPDATES = 0;
+DELETE FROM usuarios;
+SELECT * FROM cargos;
+ALTER TABLE usuarios
+ADD COLUMN reset_password_token VARCHAR(255),
+ADD COLUMN reset_password_expires DATETIME;
+describe usuarios;
+select * from usuarios;
+SELECT id, nome, senha FROM usuarios WHERE email = 'lucasbarboza@gmail.com';
+CREATE TABLE Problemas_Extintores (
+    ID_Problema INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    ID_Extintor INT NOT NULL,
+    Problema VARCHAR(255) NOT NULL,
+    Local VARCHAR(255) NOT NULL,
+    Observacoes TEXT,
+    Data_Registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (ID_Extintor) REFERENCES extintores(Patrimonio)
+);
+-- Inserindo dados na tabela de cargos
+INSERT INTO cargos (nome) VALUES 
+('Gerente'),
+('Técnico de Segurança'),
+('Operador'),
+('Manutenção'),
+('Coordenador');
 
--- Inserção de tipos de extintores
-INSERT INTO tipos_extintores (tipo) VALUES
+-- Inserindo dados na tabela de tipos de extintores
+INSERT INTO tipos_extintores (tipo) VALUES 
 ('Pó Químico'),
-('Água'),
 ('CO2'),
 ('Espuma'),
-('Pó ABC');
+('Água'),
+('Halon');
 
--- Inserção de linhas
-INSERT INTO linhas (nome, codigo, descricao) VALUES
-('Linha 1 - Azul', 'L1', 'Linha que conecta o Norte ao Sul, passando pelo centro da cidade.'),
-('Linha 2 - Verde', 'L2', 'Linha leste-oeste, atravessa a cidade de São Paulo de leste a oeste.'),
-('Linha 3 - Vermelha', 'L3', 'Linha que conecta a Zona Leste à Zona Oeste da cidade, com grande movimentação no centro.'),
-('Linha 4 - Amarela', 'L4', 'Linha que liga a Zona Oeste ao Centro, passa por grandes centros comerciais.'),
-('Linha 5 - Lilás', 'L5', 'Linha que conecta a Zona Sul à Zona Oeste.'),
-('Linha 6 - Laranja', 'L6', 'Linha que liga a Zona Norte à Zona Sul (ainda em construção).');
+-- Inserindo dados na tabela de status de extintores
+INSERT INTO status_extintor (nome) VALUES 
+('Ativo'),
+('Inativo'),
+('Em Manutenção'),
+('Aguardando Inspeção');
 
--- Inserção de status de extintores
-INSERT INTO status_extintor (nome) VALUES
-('Em uso'),
-('Aprovado'),
-('Vencido'),
-('Em manutenção'),
-('Fora de serviço');
+INSERT INTO status_extintor (nome) VALUES ('Vencido');
 
--- Inserção de cargos
-INSERT INTO cargos (nome) VALUES
-('Operador de Estação'),
-('Supervisor de Linha'),
-('Técnico de Manutenção');
+-- Inserindo dados na tabela de linhas do metrô
+INSERT INTO linhas (nome, codigo, descricao) VALUES 
+('Linha 1 - Azul', 'L1', 'Linha que liga a estação Jabaquara à estação Tucuruvi.'),
+('Linha 2 - Verde', 'L2', 'Linha que liga a estação Vila Madalena à estação Vergueiro.'),
+('Linha 3 - Vermelha', 'L3', 'Linha que liga a estação Palmeiras-Barra Funda à estação Corinthians-Itaquera.'),
+('Linha 4 - Amarela', 'L4', 'Linha que liga a estação Luz à estação São Paulo-Morumbi.'),
+('Linha 5 - Lilás', 'L5', 'Linha que liga a estação Capão Redondo à estação Chácara Klabin.');
 
--- Inserção de localizações (Linha 1 - Azul)
-INSERT INTO localizacoes (Linha_ID, Area, Subarea, Local_Detalhado, Observacoes) VALUES
-(1, 'Zona Sul', 'Jabaquara', 'Estação Jabaquara', 'Observação da estação Jabaquara'),
-(1, 'Zona Sul', 'Conceição', 'Estação Conceição', 'Observação da estação Conceição'),
-(1, 'Zona Sul', 'São Judas', 'Estação São Judas', 'Observação da estação São Judas'),
-(1, 'Centro', 'Vila Mariana', 'Estação Vila Mariana', 'Observação da estação Vila Mariana'),
-(1, 'Centro', 'Liberdade', 'Estação Liberdade', 'Observação da estação Liberdade'),
-(1, 'Centro', 'Sé', 'Estação Sé', 'Observação da estação Sé');
+-- Inserindo dados na tabela de localizacoes
+INSERT INTO localizacoes (Linha_ID, Estacao, Descricao_Local, Observacoes) VALUES 
+(1, 'Jabaquara', 'Perto da entrada principal, próximo à bilheteria.', 'Extintor de fácil acesso.'),
+(1, 'Tucuruvi', 'Ao lado da escada rolante, próximo ao banheiro.', 'Verificar validade anualmente.'),
+(2, 'Vila Madalena', 'Em frente à saída de emergência.', 'Extintor deve ser inspecionado mensalmente.'),
+(3, 'Palmeiras-Barra Funda', 'Na plataforma, próximo ao acesso ao trem.', 'Extintor em local visível.'),
+(4, 'Luz', 'Na área de espera, ao lado do caixa eletrônico.', 'Extintor precisa de manutenção.'),
+(5, 'Capão Redondo', 'Próximo à entrada de serviços.', 'Extintor em local estratégico.');
 
-INSERT INTO localizacoes (Linha_ID, Area, Subarea, Local_Detalhado, Observacoes) VALUES
-(2, 'Zona Leste', 'Vila Prudente', 'Estação Vila Prudente', 'Observação da estação Vila Prudente'),
-(2, 'Zona Sul', 'Santos-Imigrantes', 'Estação Santos-Imigrantes', 'Observação da estação Santos-Imigrantes'),
-(2, 'Zona Sul', 'Alto do Ipiranga', 'Estação Alto do Ipiranga', 'Observação da estação Alto do Ipiranga');
+-- Inserindo dados na tabela de extintores
+INSERT INTO extintores (Patrimonio, Tipo_ID, Capacidade_ID, Codigo_Fabricante, Data_Fabricacao, Data_Validade, Ultima_Recarga, Proxima_Inspecao, ID_Localizacao, QR_Code, Observacoes, Linha_ID, status_id) VALUES 
+(1001, 1, 3, 'ABC123', '2020-01-01', '2025-01-01', '2022-06-01', '2023-06-01', 1, 'http://example.com/qrcode1.png', 'Extintor em bom estado.', 1, 1),
+(1002, 2, 4, 'DEF456', '2019-05-01', '2024-05-01', '2021-11-01', '2023-11-01', 2, 'http://example.com/qrcode2.png', 'Extintor precisa de manutenção.', 1, 2),
+(1003, 3, 2, 'GHI789', '2021-03-01', '2026-03-01', '2022-09-01', '2023-09-01', 3, 'http://example.com/qrcode3.png', 'Extintor em local visível.', 2, 1),
+(1004, 4, 1, 'JKL012', '2022-02-01', '2027-02-01', '2023-01-01', '2024-01-01', 4, 'http://example.com/qrcode4.png', 'Extintor em área de espera.', 3, 1),
+(1005, 5, 5, 'MNO345', '2020-07-01', '2025-07-01', '2022-04-01', '2023-04-01', 5, 'http://example.com/qrcode5.png', 'Extintor próximo ao banheiro.', 4, 3);
 
-INSERT INTO localizacoes (Linha_ID, Area, Subarea, Local_Detalhado, Observacoes) VALUES
-(3, 'Zona Leste', 'Tatuapé', 'Estação Tatuapé', 'Observação da estação Tatuapé'),
-(3, 'Zona Leste', 'Brás', 'Estação Brás', 'Observação da estação Brás'),
-(3, 'Centro', 'República', 'Estação República', 'Observação da estação República'),
-(3, 'Centro', 'Anhangabaú', 'Estação Anhangabaú', 'Observação da estação Anhangabaú'),
-(3, 'Centro', 'Sé', 'Estação Sé', 'Observação da estação Sé'),
-(3, 'Zona Oeste', 'Pinheiros', 'Estação Pinheiros', 'Observação da estação Pinheiros');
+-- Inserindo dados na tabela de histórico de manutencao
+INSERT INTO historico_manutencao (ID_Extintor, Data_Manutencao, Descricao, Responsavel_Manutencao, Observacoes) VALUES 
+(1001, '2022-06-01', 'Manutenção preventiva realizada.', 'João Silva', 'Tudo em ordem.'),
+(1002, '2023-01-15', 'Troca de mangueira e verificação de pressão.', 'Maria Oliveira', 'Extintor em bom estado após manutenção.'),
+(1003, '2022-09-01', 'Inspeção regular realizada.', 'Carlos Pereira', 'Sem anomalias encontradas.'),
+(1004, '2023-02-10', 'Reabastecimento de espuma.', 'Ana Costa', 'Extintor pronto para uso.'),
+(1005, '2023-04-05', 'Verificação de validade e pressão.', 'Lucas Santos', 'Extintor precisa de manutenção em breve.');
 
-INSERT INTO localizacoes (Linha_ID, Area, Subarea, Local_Detalhado, Observacoes) VALUES
-(4, 'Zona Oeste', 'Butantã', 'Estação Butantã', 'Observação da estação Butantã'),
-(4, 'Zona Oeste', 'Faria Lima', 'Estação Faria Lima', 'Observação da estação Faria Lima'),
-(4, 'Zona Oeste', 'Santo Amaro', 'Estação Santo Amaro', 'Observação da estação Santo Amaro'),
-(4, 'Centro', 'Paulista', 'Estação Paulista', 'Observação da estação Paulista'),
-(4, 'Centro', 'Liberdade', 'Estação Liberdade', 'Observação da estação Liberdade'),
-(4, 'Zona Sul', 'Vila Progredior', 'Estação Vila Progredior', 'Observação da estação Vila Progredior');
-
-INSERT INTO localizacoes (Linha_ID, Area, Subarea, Local_Detalhado, Observacoes) VALUES
-(5, 'Zona Sul', 'Itaim Bibi', 'Estação Itaim Bibi', 'Observação da estação Itaim Bibi'),
-(5, 'Zona Sul', 'Vila Olímpia', 'Estação Vila Olímpia', 'Observação da estação Vila Olímpia'),
-(5, 'Zona Sul', 'Chácara Santo Antônio', 'Estação Chácara Santo Antônio', 'Observação da estação Chácara Santo Antônio'),
-(5, 'Centro', 'Centro', 'Estação Centro', 'Observação da estação Centro'),
-(5, 'Centro', 'Vila Madalena', 'Estação Vila Madalena', 'Observação da estação Vila Madalena'),
-(5, 'Zona Norte', 'Tucuruvi', 'Estação Tucuruvi', 'Observação da estação Tucuruvi');
-
-INSERT INTO localizacoes (Linha_ID, Area, Subarea, Local_Detalhado, Observacoes) VALUES
-(6, 'Zona Norte', 'Vila Guilherme', 'Estação Vila Guilherme', 'Observação da estação Vila Guilherme'),
-(6, 'Zona Norte', 'Lapa', 'Estação Lapa', 'Observação da estação Lapa'),
-(6, 'Zona Sul', 'Campo Limpo', 'Estação Campo Limpo', 'Observação da estação Campo Limpo'),
-(6, 'Zona Sul', 'Santo Amaro', 'Estação Santo Amaro', 'Observação da estação Santo Amaro'),
-(6, 'Zona Leste', 'São Miguel Paulista', 'Estação São Miguel Paulista', 'Observação da estação São Miguel Paulista'),
-(6, 'Zona Oeste', 'Barra Funda', 'Estação Barra Funda', 'Observação da estação Barra Funda');
-
--- Primeiro INSERT
-INSERT INTO extintores (
-    Patrimonio, Tipo_ID, Capacidade_ID, Codigo_Fabricante, Data_Fabricacao, 
-    Data_Validade, Ultima_Recarga, Proxima_Inspecao, ID_Localizacao, QR_Code, 
-    Observacoes, Linha_ID, status_id
-) VALUES (
-    1001, 1, 3, 'FAB12345', '2023-05-15', 
-    '2028-05-15', '2023-10-10', '2024-01-10', 2, 'QR1001ABC', 
-    'Extintor próximo à entrada principal', 1, 1
-);
-
--- Segundo INSERT
-INSERT INTO extintores (
-    Patrimonio, Tipo_ID, Capacidade_ID, Codigo_Fabricante, Data_Fabricacao, 
-    Data_Validade, Ultima_Recarga, Proxima_Inspecao, ID_Localizacao, QR_Code, 
-    Observacoes, Linha_ID, status_id
-) VALUES (
-    1002, 2, 2, 'FAB67890', '2022-03-20', 
-    '2027-03-20', '2023-06-15', '2024-06-15', 5, 'QR1002DEF', 
-    'Extintor localizado no corredor do segundo andar', 3, 2
-);
-
--- Inserção corrigida no histórico de manutenção
-INSERT INTO historico_manutencao (ID_Extintor, Data_Manutencao, Descricao, Responsavel_Manutencao, Observacoes) VALUES
-(1001, '2023-06-15', 'Recarga realizada e inspeção visual', 'Carlos Silva', 'Revisado em todas as partes, sem problemas'),
-(1002, '2023-06-16', 'Troca de válvula e recarga', 'Ana Costa', 'Válvulas trocadas, recarga completa'),
-(1001, '2023-07-05', 'Verificação de pressão e recarga', 'Roberto Santos', 'Feito teste de pressão, aprovado'),
-(1002, '2023-07-10', 'Inspeção de válvula', 'Juliana Oliveira', 'Inspeção completa sem defeitos');
-
--- Inserção de usuários
+-- Inserindo dados na tabela de usuários
 INSERT INTO usuarios (nome, email, senha, matricula, cargo_id) VALUES 
-('Carlos Silva', 'carlos.silva@metrosp.com.br', 'senha123', 'MTR001', 1), 
-('Ana Oliveira', 'ana.oliveira@metrosp.com.br', 'senha123', 'MTR002', 2), 
-('Roberto Souza', 'roberto.souza@metrosp.com.br', 'senha123', 'MTR003', 3), 
-('Lucas Silva Barboza', 'lucas.silva@metrosp.com.br', 'senha123', 'MTR004', 3);
 
+('Lucas Silva', 'mclucas2720@gmail.com', 'senha123', 'MATRICULA007', 1);
