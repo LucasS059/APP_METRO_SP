@@ -315,6 +315,62 @@ app.post('/salvar_manutencao', (req, res) => {
     });
 });
 
+app.put('/extintor/:patrimonio', async (req, res) => {
+    const patrimonio = req.params.patrimonio;
+    const {
+        codigo_fabricante,
+        data_fabricacao,
+        data_validade,
+        ultima_recarga,
+        proxima_inspecao,
+        tipo_id,
+        linha_id,
+        status_id,
+        observacoes,
+    } = req.body;
+
+    try {
+        const query = `
+            UPDATE Extintores
+            SET 
+                Codigo_Fabricante = ?,
+                Data_Fabricacao = ?,
+                Data_Validade = ?,
+                Ultima_Recarga = ?,
+                Proxima_Inspecao = ?,
+                Tipo_ID = ?,
+                Linha_ID = ?,
+                Status_ID = ?,
+                Observacoes = ?
+            WHERE Patrimonio = ?
+        `;
+
+        await db.promise().query(query, [
+            codigo_fabricante,
+            moment(data_fabricacao, 'DD/MM/YYYY').format('YYYY-MM-DD'),
+            moment(data_validade, 'DD/MM/YYYY').format('YYYY-MM-DD'),
+            moment(ultima_recarga, 'DD/MM/YYYY').format('YYYY-MM-DD'),
+            moment(proxima_inspecao, 'DD/MM/YYYY').format('YYYY-MM-DD'),
+            tipo_id,
+            linha_id,
+            status_id,
+            observacoes,
+            patrimonio
+        ]);
+
+        // Após a atualização do extintor, obtenha a Descricao_Local
+        const [localizacaoResult] = await db.promise().query('SELECT Descricao_Local FROM localizacoes WHERE ID_Localizacao = (SELECT ID_Localizacao FROM Extintores WHERE Patrimonio = ?)', [patrimonio]);
+        const descricaoLocal = localizacaoResult.length > 0 ? localizacaoResult[0].Descricao_Local : 'Descrição não encontrada';
+
+        console.log('Descrição do Local:', descricaoLocal); // Você pode usar essa descrição conforme necessário
+
+        res.json({ success: true, message: 'Extintor atualizado com sucesso!', descricaoLocal: descricaoLocal });
+    } catch (error) {
+        console.error('Erro ao atualizar extintor:', error);
+        res.status(500).json({ success: false, message: 'Erro ao atualizar o extintor.' });
+    }
+});
+
 app.post('/registrar_problema', (req, res) => {
     const { patrimonio, Problema, local, observacoes } = req.body;
 
@@ -462,10 +518,10 @@ app.get('/usuario', (req, res) => {
 
         const usuario = results[0];
         // Corrigir a construção da URL da imagem
-        const urlImagem = usuario.foto_perfil 
+        const urlImagem = usuario.foto_perfil
             ? `${req.protocol}://${req.get('host')}/${usuario.foto_perfil.replace(/\\/g, '/')}`
             : null; // Se não houver foto, defina como null
-        
+
         res.json({ success: true, ...usuario, foto_perfil: urlImagem }); // Retorna a URL da imagem
     });
 });
@@ -523,7 +579,7 @@ app.get('/extintor/:patrimonio', (req, res) => {
     LEFT JOIN historico_manutencao hm ON e.Patrimonio = hm.ID_Extintor
     WHERE e.Patrimonio = ?
     `;
-    
+
     db.query(query, [patrimonio], (err, results) => {
         if (err) {
             console.error('Erro ao buscar extintor:', err);
@@ -958,8 +1014,3 @@ cron.schedule('0 0 * * *', async () => {
     await atualizarStatusExtintores();
     console.log('Verificação diária de status de extintores realizada.');
 });
-
-// cron.schedule('0 8 * * *', async () => {
-//     await verificarValidadeExtintores();
-//     console.log('Verificação diária de validade de extintores realizada.');
-// });
