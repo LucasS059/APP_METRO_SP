@@ -31,7 +31,7 @@ class _TelaReportarErroState extends State<TelaReportarErro> {
     final erro = _controller.text.trim();
     if (erro.isNotEmpty && _usuarioEmail != null) {
       final response = await http.post(
-        Uri.parse('http://10.0.2.2:3001/reportar-erro'),
+        Uri.parse('http://localhost:3001/reportar-erro'),
         headers: {
           'Content-Type': 'application/json',
         },
@@ -134,12 +134,6 @@ class _TelaReportarErroState extends State<TelaReportarErro> {
             Center(
               child: ElevatedButton(
                 onPressed: _enviarErro,
-                child: const Text(
-                  'Enviar Erro',
-                  style: TextStyle(
-                      color: Color(0xFFD9D9D9),
-                      fontSize: 20),
-                ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF011689),
                   padding: const EdgeInsets.symmetric(
@@ -149,12 +143,18 @@ class _TelaReportarErroState extends State<TelaReportarErro> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
+                child: const Text(
+                  'Enviar Erro',
+                  style: TextStyle(
+                      color: Color(0xFFD9D9D9),
+                      fontSize: 20),
+                ),
               ),
             ),
             const Spacer(),
             Opacity(
               opacity: 0.2,
-              child: Container(
+              child: SizedBox(
                 width: MediaQuery.of(context).size.width * 0.5,
                 height: MediaQuery.of(context).size.height * 0.1,
                 child: FittedBox(

@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 
 class TelaConsultaLocalizacaoExtintor extends StatefulWidget {
-  const TelaConsultaLocalizacaoExtintor({Key? key}) : super(key: key);
+  const TelaConsultaLocalizacaoExtintor({super.key});
 
   @override
   _TelaConsultaLocalizacaoExtintorState createState() =>
@@ -32,7 +32,7 @@ class _TelaConsultaLocalizacaoExtintorState
     });
 
     final url = Uri.parse(
-        'http://10.0.2.2:3001/extintor/localizacao/$_patrimonio'); // Substitua 10.0.2.2 pelo IP da sua máquina
+        'http://localhost:3001/extintor/localizacao/$_patrimonio'); // Substitua localhost pelo IP da sua máquina
 
     try {
       final response = await http.get(url);

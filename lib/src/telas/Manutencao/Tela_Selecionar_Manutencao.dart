@@ -4,6 +4,8 @@ import 'package:mobilegestaoextintores/src/telas/Manutencao/Tela_Chamda_manutenc
 import 'package:mobilegestaoextintores/src/telas/Manutencao/Tela_Manutencao.dart';
 
 class TelaSelecaoPage extends StatelessWidget {
+  const TelaSelecaoPage({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(

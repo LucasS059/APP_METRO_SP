@@ -16,7 +16,7 @@ class _TelaLoginState extends State<TelaLogin> {
   bool _obscureText = true;
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  String _errorMessage = '';
+  final String _errorMessage = '';
 
   @override
   void initState() {
@@ -77,7 +77,7 @@ class _TelaLoginState extends State<TelaLogin> {
                 ),
               ),
               const SizedBox(height: 20),
-              Container(
+              SizedBox(
                 width: 380,
                 child: const Divider(
                   thickness: 1,
@@ -132,7 +132,7 @@ class _TelaLoginState extends State<TelaLogin> {
           ),
         ),
       ),
-      bottomNavigationBar: Container(
+      bottomNavigationBar: SizedBox(
         height: 100,
         child: Center(
           child: Row(
@@ -243,7 +243,7 @@ class _TelaLoginState extends State<TelaLogin> {
   Future<void> _login(BuildContext context) async {
     try {
       final response = await http.post(
-        Uri.parse('http://10.0.2.2:3001/login'),
+        Uri.parse('http://localhost:3001/login'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'email': _emailController.text,
@@ -293,7 +293,7 @@ class _TelaLoginState extends State<TelaLogin> {
 
   // Future<void> _login(BuildContext context) async {
   //   final response = await http.post(
-  //     Uri.parse('http://10.0.2.2:3001/login'),
+  //     Uri.parse('http://localhost:3001/login'),
   //     headers: {'Content-Type': 'application/json'},
   //     body: jsonEncode({
   //       'email': _emailController.text,

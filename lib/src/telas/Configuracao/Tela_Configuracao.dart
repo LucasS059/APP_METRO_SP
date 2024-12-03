@@ -74,7 +74,7 @@ class TelaConfiguracao extends StatelessWidget {
             Opacity(
               opacity: 0.2,
               child: Center(
-                child: Container(
+                child: SizedBox(
                   width: MediaQuery.of(context).size.width * 0.5,
                   height: MediaQuery.of(context).size.height * 0.1,
                   child: Image.asset(

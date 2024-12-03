@@ -4,6 +4,8 @@ import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 
 class ManutencaoExtintorPage extends StatefulWidget {
+  const ManutencaoExtintorPage({super.key});
+
   @override
   _ManutencaoExtintorPageState createState() => _ManutencaoExtintorPageState();
 }
@@ -30,7 +32,7 @@ class _ManutencaoExtintorPageState extends State<ManutencaoExtintorPage> {
   }
 
   Future<void> _carregarStatus() async {
-    final url = Uri.parse('http://10.0.2.2:3001/status');
+    final url = Uri.parse('http://localhost:3001/status');
     final response = await http.get(url);
 
     if (response.statusCode == 200) {
@@ -45,7 +47,7 @@ class _ManutencaoExtintorPageState extends State<ManutencaoExtintorPage> {
 
   Future<void> _carregarExtintores() async {
     final url = Uri.parse(
-        'http://10.0.2.2:3001/extintores-com-problemas'); // Novo endpoint
+        'http://localhost:3001/extintores-com-problemas'); // Novo endpoint
     final response = await http.get(url);
 
     if (response.statusCode == 200) {
@@ -100,7 +102,7 @@ class _ManutencaoExtintorPageState extends State<ManutencaoExtintorPage> {
       return;
     }
 
-    final url = Uri.parse('http://10.0.2.2:3001/salvar_manutencao');
+    final url = Uri.parse('http://localhost:3001/salvar_manutencao');
     final response = await http.post(url,
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
@@ -117,7 +119,7 @@ class _ManutencaoExtintorPageState extends State<ManutencaoExtintorPage> {
 
     if (response.statusCode == 200) {
       // Excluir o registro de problema após salvar a manutenção
-      final deleteUrl = Uri.parse('http://10.0.2.2:3001/excluir_problema');
+      final deleteUrl = Uri.parse('http://localhost:3001/excluir_problema');
       final deleteResponse = await http.post(deleteUrl,
           headers: {'Content-Type': 'application/json'},
           body: json.encode({'patrimonio': idExtintor}));

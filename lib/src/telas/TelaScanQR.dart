@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:qr_code_scanner_plus/qr_code_scanner_plus.dart';
 
 class ScannerQRCODE extends StatelessWidget {
-  const ScannerQRCODE({Key? key}) : super(key: key);
+  const ScannerQRCODE({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -26,24 +26,24 @@ class ScannerQRCODE extends StatelessWidget {
 }
 
 class QRViewExample extends StatefulWidget {
-  const QRViewExample({Key? key}) : super(key: key);
+  const QRViewExample({super.key});
 
   @override
   State<StatefulWidget> createState() => _QRViewExampleState();
 }
 
 class _QRViewExampleState extends State<QRViewExample> {
-  Barcode? result;
-  QRViewController? controller;
+  Barcode? resultado;
+  QRViewController? controlador;
   final GlobalKey qrKey = GlobalKey(debugLabel: 'QR');
 
   @override
   void reassemble() {
     super.reassemble();
     if (Platform.isAndroid) {
-      controller?.pauseCamera();
+      controlador?.pauseCamera();
     }
-    controller?.resumeCamera();
+    controlador?.resumeCamera();
   }
 
   @override
@@ -64,13 +64,14 @@ class _QRViewExampleState extends State<QRViewExample> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: <Widget>[
-                if (result != null)
+                if (resultado != null)
                   ElevatedButton(
                     onPressed: () {
                       Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (context) => QRResultScreen(
-                            result: result?.code ?? 'Nenhum dado encontrado',
+                            resultado:
+                                resultado?.code ?? 'Nenhum dado encontrado',
                           ),
                         ),
                       );
@@ -84,11 +85,11 @@ class _QRViewExampleState extends State<QRViewExample> {
                   children: [
                     ElevatedButton(
                       onPressed: () async {
-                        await controller?.toggleFlash();
+                        await controlador?.toggleFlash();
                         setState(() {});
                       },
                       child: FutureBuilder(
-                        future: controller?.getFlashStatus(),
+                        future: controlador?.getFlashStatus(),
                         builder: (context, snapshot) {
                           return Text(
                               'Flash: ${snapshot.data == true ? "Ligado" : "Desligado"}');
@@ -98,11 +99,11 @@ class _QRViewExampleState extends State<QRViewExample> {
                     const SizedBox(width: 8),
                     ElevatedButton(
                       onPressed: () async {
-                        await controller?.flipCamera();
+                        await controlador?.flipCamera();
                         setState(() {});
                       },
                       child: FutureBuilder(
-                        future: controller?.getCameraInfo(),
+                        future: controlador?.getCameraInfo(),
                         builder: (context, snapshot) {
                           if (snapshot.data != null) {
                             return Text(
@@ -124,7 +125,7 @@ class _QRViewExampleState extends State<QRViewExample> {
   }
 
   Widget _buildQrView(BuildContext context) {
-    var scanArea = (MediaQuery.of(context).size.width < 400 ||
+    var areaDeScan = (MediaQuery.of(context).size.width < 400 ||
             MediaQuery.of(context).size.height < 400)
         ? 150.0
         : 300.0;
@@ -137,25 +138,27 @@ class _QRViewExampleState extends State<QRViewExample> {
         borderRadius: 10,
         borderLength: 30,
         borderWidth: 10,
-        cutOutSize: scanArea,
+        cutOutSize: areaDeScan,
       ),
-      onPermissionSet: (ctrl, p) => _onPermissionSet(context, ctrl, p),
+      onPermissionSet: (ctrl, permissao) =>
+          _onPermissionSet(context, ctrl, permissao),
     );
   }
 
-  void _onQRViewCreated(QRViewController controller) {
+  void _onQRViewCreated(QRViewController controlador) {
     setState(() {
-      this.controller = controller;
+      this.controlador = controlador;
     });
-    controller.scannedDataStream.listen((scanData) {
+    controlador.scannedDataStream.listen((dadosEscaneados) {
       setState(() {
-        result = scanData;
+        resultado = dadosEscaneados;
       });
     });
   }
 
-  void _onPermissionSet(BuildContext context, QRViewController ctrl, bool p) {
-    if (!p) {
+  void _onPermissionSet(
+      BuildContext context, QRViewController ctrl, bool permissao) {
+    if (!permissao) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Permissão negada')),
       );
@@ -164,15 +167,15 @@ class _QRViewExampleState extends State<QRViewExample> {
 
   @override
   void dispose() {
-    controller?.dispose();
+    controlador?.dispose();
     super.dispose();
   }
 }
 
 class QRResultScreen extends StatelessWidget {
-  final String result;
+  final String resultado;
 
-  const QRResultScreen({Key? key, required this.result}) : super(key: key);
+  const QRResultScreen({super.key, required this.resultado});
 
   @override
   Widget build(BuildContext context) {
@@ -190,7 +193,7 @@ class QRResultScreen extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               Text(
-                result,
+                resultado,
                 textAlign: TextAlign.center,
                 style: const TextStyle(fontSize: 16),
               ),

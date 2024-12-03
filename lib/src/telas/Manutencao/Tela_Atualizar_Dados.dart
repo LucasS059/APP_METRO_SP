@@ -7,6 +7,8 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 
 class TelaAtualizarExtintor extends StatefulWidget {
+  const TelaAtualizarExtintor({super.key});
+
   @override
   _TelaAtualizarExtintorState createState() => _TelaAtualizarExtintorState();
 }
@@ -51,7 +53,7 @@ class _TelaAtualizarExtintorState extends State<TelaAtualizarExtintor> {
   }
 
   Future<void> fetchTipos() async {
-    final response = await http.get(Uri.parse('http://10.0.2.2:3001/tipos-extintores'));
+    final response = await http.get(Uri.parse('http://localhost:3001/tipos-extintores'));
     if (response.statusCode == 200) {
       setState(() {
         tipos = List<Map<String, dynamic>>.from(json.decode(response.body)['data']);
@@ -60,7 +62,7 @@ class _TelaAtualizarExtintorState extends State<TelaAtualizarExtintor> {
   }
 
   Future<void> fetchLinhas() async {
-    final response = await http.get(Uri.parse('http://10.0.2.2:3001/linhas'));
+    final response = await http.get(Uri.parse('http://localhost:3001/linhas'));
     if (response.statusCode == 200) {
       setState(() {
         linhas = List<Map<String, dynamic>>.from(json.decode(response.body)['data']);
@@ -69,7 +71,7 @@ class _TelaAtualizarExtintorState extends State<TelaAtualizarExtintor> {
   }
 
   Future<void> fetchStatus() async {
-    final response = await http.get(Uri.parse('http://10.0.2.2:3001/status'));
+    final response = await http.get(Uri.parse('http://localhost:3001/status'));
     if (response.statusCode == 200) {
       setState(() {
         status = List<Map<String, dynamic>>.from(json.decode(response.body)['data']);
@@ -97,7 +99,7 @@ class _TelaAtualizarExtintorState extends State<TelaAtualizarExtintor> {
       _isLoading = true;
     });
 
-    final response = await http.get(Uri.parse('http://10.0.2.2:3001/extintor/$patrimonio'));
+    final response = await http.get(Uri.parse('http://localhost:3001/extintor/$patrimonio'));
     if (response.statusCode == 200) {
       final extintor = json.decode(response.body)['extintor'];
       _codigoFabricanteController.text = extintor['Codigo_Fabricante'] ?? '';
@@ -161,7 +163,7 @@ class _TelaAtualizarExtintorState extends State<TelaAtualizarExtintor> {
     String formattedProximaInspecao = DateFormat('yyyy-MM-dd').format(parsedProximaInspecao);
 
     final response = await http.put(
-      Uri.parse('http://10.0.2.2:3001/extintor/$patrimonio'),
+      Uri.parse('http://localhost:3001/extintor/$patrimonio'),
       headers: {"Content-Type": "application/json"},
       body: jsonEncode({
         "Codigo_Fabricante": _codigoFabricanteController.text,
@@ -188,7 +190,7 @@ class _TelaAtualizarExtintorState extends State<TelaAtualizarExtintor> {
 
   Future<void> _gerarQRCode(String patrimonio) async {
     final response = await http.post(
-      Uri.parse('http://10.0.2.2:3001/gerar_qrcode'),
+      Uri.parse('http://localhost:3001/gerar_qrcode'),
       headers: {"Content-Type": "application/json"},
       body: jsonEncode({"patrimonio": patrimonio}),
     );

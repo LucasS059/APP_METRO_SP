@@ -3,6 +3,8 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 
 class RegistrarProblemaExtintorPage extends StatefulWidget {
+  const RegistrarProblemaExtintorPage({super.key});
+
   @override
   _RegistrarProblemaExtintorPageState createState() =>
       _RegistrarProblemaExtintorPageState();
@@ -43,7 +45,7 @@ class _RegistrarProblemaExtintorPageState
   Future<void> _fetchProblemas() async {
     try {
       final response =
-          await http.get(Uri.parse('http://10.0.2.2:3001/problemas'));
+          await http.get(Uri.parse('http://localhost:3001/problemas'));
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         setState(() {
@@ -60,7 +62,7 @@ class _RegistrarProblemaExtintorPageState
   Future<void> _fetchStatus() async {
     try {
       final response =
-          await http.get(Uri.parse('http://10.0.2.2:3001/status'));
+          await http.get(Uri.parse('http://localhost:3001/status'));
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         setState(() {
@@ -97,7 +99,7 @@ class _RegistrarProblemaExtintorPageState
 
     try {
       final response = await http.post(
-        Uri.parse('http://10.0.2.2:3001/registrar_problema'),
+        Uri.parse('http://localhost:3001/registrar_problema'),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode(problemaData),
       );
@@ -121,7 +123,7 @@ class _RegistrarProblemaExtintorPageState
       String patrimonio, String? statusSelecionado) async {
     try {
       final response = await http.put(
-        Uri.parse('http://10.0.2.2:3001/atualizar_status_extintor'),
+        Uri.parse('http://localhost:3001/atualizar_status_extintor'),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
           "patrimonio": patrimonio,
@@ -256,12 +258,12 @@ class _RegistrarProblemaExtintorPageState
                   const SizedBox(height: 20),
                   ElevatedButton(
                     onPressed: _registrarProblema,
-                    child: const Text('Registrar Problema'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF011689),
                       padding: const EdgeInsets.symmetric(vertical: 15),
                       textStyle: const TextStyle(fontSize: 16),
                     ),
+                    child: const Text('Registrar Problema'),
                   ),
                 ],
               ),
@@ -274,7 +276,7 @@ class _RegistrarProblemaExtintorPageState
             const SizedBox(height: 10),
             problemas.isEmpty
                 ? const Text('Nenhum problema registrado.')
-                : Container(
+                : SizedBox(
                     height: 300,
                     child: ListView.builder(
                       itemCount: problemas.length,

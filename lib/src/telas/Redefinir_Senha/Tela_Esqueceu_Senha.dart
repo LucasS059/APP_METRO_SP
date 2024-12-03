@@ -4,6 +4,8 @@ import 'package:http/http.dart' as http; // Importar o pacote http
 import 'dart:convert'; // Importar para usar jsonEncode
 
 class TelaEsqueceuSenha extends StatefulWidget {
+  const TelaEsqueceuSenha({super.key});
+
   @override
   _ForgotPasswordScreenState createState() => _ForgotPasswordScreenState();
 }
@@ -15,7 +17,7 @@ class _ForgotPasswordScreenState extends State<TelaEsqueceuSenha> {
 
   // Defina a URL base do seu backend
   final String _baseUrl =
-      'http://10.0.2.2:3001'; // Altere para o endereço do seu servidor
+      'http://localhost:3001'; // Altere para o endereço do seu servidor
 
   void _submitEmail() async {
     final email = _emailController.text.trim();
